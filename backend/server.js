@@ -28,6 +28,7 @@ const appRoutes = require('./routes/apps');
 const helpRoutes = require('./routes/help');
 const adminRoutes = require('./routes/admin');
 
+app.use('/auth', authRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/quiz', quizRoutes);
 app.use('/api/papers', paperRoutes);
