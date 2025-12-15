@@ -1,4 +1,5 @@
-const API_URL = 'https://zeta-website.onrender.com';
+const API_URL = 'https://zeta-website.onrender.com/api';
+const authToken = localStorage.getItem('token');
 
 // Admin Dashboard Functions
 function setupAdminListeners() {
@@ -35,7 +36,7 @@ function capitalizeFirst(str) {
     return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
-async function loadAdminData() {
+window.loadAdminData = async function () {
     await loadAdminDailyQuiz();
     await loadAdminTopics();
     await loadAdminPapers();
