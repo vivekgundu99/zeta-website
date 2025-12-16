@@ -496,7 +496,7 @@ async function loadDailyQuiz() {
         const data = await response.json();
 
         if (response.ok && data) {
-            const userAnswer = await getUserAnswer('daily', data._id);
+            const userAnswer = await getUserAnswerAndCorrect('daily', data._id);
             container.innerHTML = renderQuizQuestion(data, userAnswer, 'daily');
         } else {
             container.innerHTML = '<p class="empty-message">📝 No daily quiz available today</p>';
@@ -560,7 +560,7 @@ async function loadTopicQuestions(topicId, topicName) {
             
             for (const question of data.questions) {
                 question.topicId = topicId; // Add topicId to each question
-                const userAnswer = await getUserAnswer('competitive', question._id);
+                const userAnswer = await getUserAnswerAndCorrect('competitive', question._id);
                 html += renderQuizQuestion(question, userAnswer, 'competitive');
             }
             
