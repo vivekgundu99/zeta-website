@@ -1,13 +1,27 @@
+// Enhanced App.js - Professional Implementation
 let authToken = null;
+let currentUser = null;
+let debounceTimer = null;
 
-// Initialize
+// Constants
+const DEBOUNCE_DELAY = 300;
+const MESSAGE_DURATION = 3000;
+const API_TIMEOUT = 10000;
+
+// Initialize with error handling
 document.addEventListener('DOMContentLoaded', () => {
-    checkAuth();
-    loadTheme();
-    setupEventListeners();
+    try {
+        checkAuth();
+        loadTheme();
+        setupEventListeners();
+        setupKeyboardNavigation();
+    } catch (error) {
+        console.error('Initialization error:', error);
+        showMessage('Application initialization failed. Please refresh.', 'error');
+    }
 });
 
-// Authentication Check
+// Enhanced Authentication Check
 function checkAuth() {
     authToken = localStorage.getItem('token');
     const userStr = localStorage.getItem('user');
@@ -17,145 +31,316 @@ function checkAuth() {
         return;
     }
     
-    currentUser = JSON.parse(userStr);
-    document.getElementById('userName').textContent = currentUser.fullname;
-    document.getElementById('welcomeName').textContent = currentUser.fullname;
-    
-    if (currentUser.email === 'admin@zeta.com') {
-        document.getElementById('adminBtn').style.display = 'block';
+    try {
+        currentUser = JSON.parse(userStr);
+        updateUserInterface();
+        showWelcomePopup();
+        loadDataWithProgress();
+    } catch (error) {
+        console.error('Auth check failed:', error);
+        localStorage.clear();
+        window.location.href = 'login.html';
     }
-    
-    showWelcomePopup();
-    loadData();
 }
 
-// Theme Management
+// Update user interface with user data
+function updateUserInterface() {
+    const userNameEl = document.getElementById('userName');
+    const welcomeNameEl = document.getElementById('welcomeName');
+    
+    if (userNameEl) userNameEl.textContent = currentUser.fullname;
+    if (welcomeNameEl) welcomeNameEl.textContent = currentUser.fullname;
+    
+    if (currentUser.email === 'admin@zeta.com') {
+        const adminBtn = document.getElementById('adminBtn');
+        if (adminBtn) adminBtn.style.display = 'block';
+    }
+}
+
+// Enhanced Theme Management
 function loadTheme() {
     const savedTheme = localStorage.getItem('theme') || 'light';
-    document.body.className = `${savedTheme}-theme`;
-    updateThemeIcon(savedTheme);
+    applyTheme(savedTheme);
+}
+
+function applyTheme(theme) {
+    document.body.classList.remove('light-theme', 'dark-theme');
+    document.body.classList.add(`${theme}-theme`);
+    updateThemeIcon(theme);
+    localStorage.setItem('theme', theme);
 }
 
 function updateThemeIcon(theme) {
     const icon = document.querySelector('.theme-icon');
-    icon.textContent = theme === 'light' ? '🌙' : '☀️';
+    if (icon) {
+        icon.textContent = theme === 'light' ? '🌙' : '☀️';
+        icon.setAttribute('aria-label', `Switch to ${theme === 'light' ? 'dark' : 'light'} mode`);
+    }
 }
 
-document.getElementById('themeToggle').addEventListener('click', () => {
-    const currentTheme = document.body.classList.contains('light-theme') ? 'light' : 'dark';
-    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-    document.body.className = `${newTheme}-theme`;
-    localStorage.setItem('theme', newTheme);
-    updateThemeIcon(newTheme);
-});
+// Theme toggle with smooth transition
+const themeToggle = document.getElementById('themeToggle');
+if (themeToggle) {
+    themeToggle.addEventListener('click', (event) => {
+        const currentTheme = document.body.classList.contains('light-theme') ? 'light' : 'dark';
+        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+        applyTheme(newTheme);
+        
+        // Add ripple effect
+        createRipple(themeToggle, event);
+    });
+}
 
-// Welcome Popup
+// Ripple effect utility
+function createRipple(element, event) {
+    const ripple = document.createElement('span');
+    const rect = element.getBoundingClientRect();
+    const size = Math.max(rect.width, rect.height);
+    const x = event.clientX - rect.left - size / 2;
+    const y = event.clientY - rect.top - size / 2;
+    
+    ripple.style.cssText = `
+        position: absolute;
+        width: ${size}px;
+        height: ${size}px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.6);
+        top: ${y}px;
+        left: ${x}px;
+        pointer-events: none;
+        transform: scale(0);
+        animation: ripple 0.6s ease-out;
+    `;
+    
+    element.style.position = 'relative';
+    element.appendChild(ripple);
+    
+    setTimeout(() => ripple.remove(), 600);
+}
+
+// Enhanced Welcome Popup with accessibility
 function showWelcomePopup() {
     const popup = document.getElementById('welcomePopup');
-    popup.style.display = 'block';
+    if (popup) {
+        popup.style.display = 'block';
+        popup.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+        
+        // Focus trap
+        const focusableElements = popup.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+        if (focusableElements.length > 0) {
+            focusableElements[0].focus();
+        }
+    }
 }
 
-document.getElementById('continueBtn').addEventListener('click', () => {
-    document.getElementById('welcomePopup').style.display = 'none';
-});
-
-// Message Popup
+// Enhanced Message System with auto-dismiss
 function showMessage(message, type = 'success') {
     const popup = document.getElementById('messagePopup');
+    if (!popup) return;
+    
+    // Clear existing timeout
+    if (popup.timeoutId) {
+        clearTimeout(popup.timeoutId);
+    }
+    
     popup.textContent = message;
     popup.className = `message-popup ${type} show`;
-    setTimeout(() => {
+    popup.setAttribute('role', 'alert');
+    popup.setAttribute('aria-live', 'polite');
+    
+    // Auto-dismiss
+    popup.timeoutId = setTimeout(() => {
         popup.classList.remove('show');
-    }, 3000);
+    }, MESSAGE_DURATION);
+    
+    // Click to dismiss
+    popup.onclick = () => {
+        popup.classList.remove('show');
+        clearTimeout(popup.timeoutId);
+    };
 }
 
-// Setup Event Listeners
+// Enhanced Event Listeners Setup
 function setupEventListeners() {
+    // Continue Button
+    const continueBtn = document.getElementById('continueBtn');
+    if (continueBtn) {
+        continueBtn.addEventListener('click', () => {
+            const popup = document.getElementById('welcomePopup');
+            if (popup) {
+                popup.style.display = 'none';
+                popup.setAttribute('aria-hidden', 'true');
+                document.body.style.overflow = '';
+                document.body.removeAttribute('style');
+
+            }
+        });
+    }
+
     // Account Button
-    document.getElementById('accountBtn').addEventListener('click', () => {
-        document.getElementById('accountModal').style.display = 'block';
-    });
+    const accountBtn = document.getElementById('accountBtn');
+    if (accountBtn) {
+        accountBtn.addEventListener('click', () => openModal('accountModal'));
+    }
 
     // Admin Button
-    document.getElementById('adminBtn').addEventListener('click', () => {
-        openAdminDashboard();
-    });
+    const adminBtn = document.getElementById('adminBtn');
+    if (adminBtn) {
+        adminBtn.addEventListener('click', openAdminDashboard);
+    }
 
     // Logout
-    document.getElementById('logoutBtn').addEventListener('click', () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        window.location.href = 'login.html';
-    });
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', handleLogout);
+    }
 
     // Update Password
-    document.getElementById('updatePasswordBtn').addEventListener('click', () => {
-        document.getElementById('accountModal').style.display = 'none';
-        document.getElementById('updatePasswordModal').style.display = 'block';
-    });
+    const updatePasswordBtn = document.getElementById('updatePasswordBtn');
+    if (updatePasswordBtn) {
+        updatePasswordBtn.addEventListener('click', () => {
+            closeModal('accountModal');
+            openModal('updatePasswordModal');
+        });
+    }
 
     // Help
-    document.getElementById('helpBtn').addEventListener('click', async () => {
-        try {
-            const response = await fetch(`${API_URL}/help`, {
-                headers: { 'Authorization': `Bearer ${authToken}` }
-            });
-            const data = await response.json();
-            
-            if (response.ok && data.pdfUrl) {
-                window.open(data.pdfUrl, '_blank');
-            } else {
-                showMessage('Help document not available', 'error');
-            }
-        } catch (error) {
-            console.error('Error fetching help:', error);
-            showMessage('Error loading help document', 'error');
-        }
-    });
+    const helpBtn = document.getElementById('helpBtn');
+    if (helpBtn) {
+        helpBtn.addEventListener('click', handleHelp);
+    }
 
     // Delete Account
-    document.getElementById('deleteAccountBtn').addEventListener('click', () => {
-        if (confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
-            deleteAccount();
-        }
-    });
+    const deleteAccountBtn = document.getElementById('deleteAccountBtn');
+    if (deleteAccountBtn) {
+        deleteAccountBtn.addEventListener('click', handleDeleteAccount);
+    }
 
     // Close modals
     document.querySelectorAll('.close-modal').forEach(btn => {
         btn.addEventListener('click', function() {
-            this.closest('.modal').style.display = 'none';
+            const modal = this.closest('.modal');
+            if (modal) {
+                closeModal(modal.id);
+            }
+        });
+    });
+
+    // Close modal on outside click
+    document.querySelectorAll('.modal').forEach(modal => {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeModal(modal.id);
+            }
         });
     });
 
     // Update Password Form
-    document.getElementById('updatePasswordForm').addEventListener('submit', updatePassword);
+    const updatePasswordForm = document.getElementById('updatePasswordForm');
+    if (updatePasswordForm) {
+        updatePasswordForm.addEventListener('submit', updatePassword);
+    }
 
     // Show More Papers
-    document.getElementById('showMorePapers').addEventListener('click', () => {
-        document.getElementById('allPapersModal').style.display = 'block';
-    });
+    const showMorePapers = document.getElementById('showMorePapers');
+    if (showMorePapers) {
+        showMorePapers.addEventListener('click', () => openModal('allPapersModal'));
+    }
 
-    // Paper Search
-    document.getElementById('paperSearch').addEventListener('input', (e) => {
-        searchPapers(e.target.value);
-    });
+    // Paper Search with debounce
+    const paperSearch = document.getElementById('paperSearch');
+    if (paperSearch) {
+        paperSearch.addEventListener('input', (e) => {
+            debounceSearch(e.target.value);
+        });
+    }
 }
 
-// Update Password
+// Debounced search
+function debounceSearch(query) {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+        searchPapers(query);
+    }, DEBOUNCE_DELAY);
+}
+
+// Keyboard Navigation Setup
+function setupKeyboardNavigation() {
+    document.addEventListener('keydown', (e) => {
+        // Escape key closes modals
+        if (e.key === 'Escape') {
+            const openModals = document.querySelectorAll('.modal[style*="display: block"]');
+            openModals.forEach(modal => closeModal(modal.id));
+        }
+    });
+}
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && document.activeElement?.onclick) {
+        document.activeElement.click();
+    }
+});
+
+// Modal Management
+function openModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.style.display = 'block';
+        modal.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+        
+        // Focus first focusable element
+        const focusable = modal.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+        if (focusable) {
+            setTimeout(() => focusable.focus(), 100);
+        }
+    }
+}
+
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.style.display = 'none';
+        modal.setAttribute('aria-hidden', 'true');
+        document.body.style.overflow = '';
+    }
+}
+
+// Enhanced Logout
+function handleLogout() {
+    if (confirm('Are you sure you want to logout?')) {
+        // Show loading state
+        showMessage('Logging out...', 'info');
+        
+        setTimeout(() => {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = 'login.html';
+        }, 500);
+    }
+}
+
+// Enhanced Update Password with validation
 async function updatePassword(e) {
     e.preventDefault();
     
-    const currentPassword = document.getElementById('currentPassword').value;
-    const newPassword = document.getElementById('newPasswordUpdate').value;
-    const confirmPassword = document.getElementById('confirmPasswordUpdate').value;
-
-    if (newPassword !== confirmPassword) {
-        showMessage('Passwords do not match', 'error');
+    const currentPassword = document.getElementById('currentPassword').value.trim();
+    const newPassword = document.getElementById('newPasswordUpdate').value.trim();
+    const confirmPassword = document.getElementById('confirmPasswordUpdate').value.trim();
+    
+    // Client-side validation
+    if (!validatePassword(newPassword, confirmPassword)) {
         return;
     }
+    
+    // Show loading state
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Updating...';
 
     try {
-        const response = await fetch(`${API_URL}/auth/update-password`, {
+        const response = await fetchWithTimeout(`${API_URL}/auth/update-password`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -167,22 +352,52 @@ async function updatePassword(e) {
         const data = await response.json();
 
         if (response.ok) {
-            showMessage('Password updated successfully', 'success');
-            document.getElementById('updatePasswordModal').style.display = 'none';
+            showMessage('Password updated successfully!', 'success');
+            closeModal('updatePasswordModal');
             document.getElementById('updatePasswordForm').reset();
         } else {
             showMessage(data.message || 'Password update failed', 'error');
         }
     } catch (error) {
         console.error('Password update error:', error);
-        showMessage('Error updating password', 'error');
+        showMessage(error.message || 'Error updating password', 'error');
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
     }
 }
 
-// Delete Account
-async function deleteAccount() {
+// Password validation
+function validatePassword(newPassword, confirmPassword) {
+    if (newPassword.length < 6) {
+        showMessage('Password must be at least 6 characters long', 'error');
+        return false;
+    }
+    
+    if (newPassword !== confirmPassword) {
+        showMessage('Passwords do not match', 'error');
+        return false;
+    }
+    
+    return true;
+}
+
+// Enhanced Delete Account
+async function handleDeleteAccount() {
+    const confirmed = confirm('⚠️ WARNING: This action cannot be undone!\n\nAre you absolutely sure you want to delete your account? All your data will be permanently removed.');
+    
+    if (!confirmed) return;
+    
+    const doubleCheck = prompt('Type "DELETE" to confirm account deletion:');
+    if (doubleCheck !== 'DELETE') {
+        showMessage('Account deletion cancelled', 'info');
+        return;
+    }
+
     try {
-        const response = await fetch(`${API_URL}/auth/delete-account`, {
+        showMessage('Deleting account...', 'info');
+        
+        const response = await fetchWithTimeout(`${API_URL}/auth/delete-account`, {
             method: 'DELETE',
             headers: { 'Authorization': `Bearer ${authToken}` }
         });
@@ -190,8 +405,7 @@ async function deleteAccount() {
         if (response.ok) {
             showMessage('Account deleted successfully', 'success');
             setTimeout(() => {
-                localStorage.removeItem('token');
-                localStorage.removeItem('user');
+                localStorage.clear();
                 window.location.href = 'login.html';
             }, 1500);
         } else {
@@ -204,77 +418,146 @@ async function deleteAccount() {
     }
 }
 
-// Load All Data
-async function loadData() {
-    await loadDailyQuiz();
-    await loadCompetitiveQuiz();
-    await loadPapers();
-    await loadChannels();
-    await loadApps();
-}
-
-// Load Daily Quiz
-async function loadDailyQuiz() {
+// Enhanced Help Handler
+async function handleHelp() {
     try {
-        const response = await fetch(`${API_URL}/quiz/daily`, {
+        showMessage('Loading help document...', 'info');
+        
+        const response = await fetchWithTimeout(`${API_URL}/help`, {
             headers: { 'Authorization': `Bearer ${authToken}` }
         });
+        
+        const data = await response.json();
+        
+        if (response.ok && data.pdfUrl) {
+            window.open(data.pdfUrl, '_blank');
+        } else {
+            showMessage('Help document not available', 'error');
+        }
+    } catch (error) {
+        console.error('Error fetching help:', error);
+        showMessage('Error loading help document', 'error');
+    }
+}
+
+// Load Data with Progress Indicator
+async function loadDataWithProgress() {
+    const sections = [
+        { fn: loadDailyQuiz, name: 'Daily Quiz' },
+        { fn: loadCompetitiveQuiz, name: 'Topics' },
+        { fn: loadPapers, name: 'Papers' },
+        { fn: loadChannels, name: 'Channels' },
+        { fn: loadApps, name: 'Apps' }
+    ];
+    
+    for (const section of sections) {
+        try {
+            await section.fn();
+        } catch (error) {
+            console.error(`Error loading ${section.name}:`, error);
+            showMessage(`Failed to load ${section.name}`, 'error');
+        }
+    }
+}
+
+// Enhanced Fetch with Timeout
+async function fetchWithTimeout(url, options = {}, timeout = API_TIMEOUT) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    
+    try {
+        const response = await fetch(url, {
+            ...options,
+            signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        return response;
+    } catch (error) {
+        clearTimeout(timeoutId);
+        if (error.name === 'AbortError') {
+            throw new Error('Request timeout. Please check your connection.');
+        }
+        throw error;
+    }
+}
+
+// Enhanced Load Daily Quiz with error handling
+async function loadDailyQuiz() {
+    const container = document.getElementById('dailyQuizContainer');
+    if (!container) return;
+    
+    // Show loading skeleton
+    container.innerHTML = '<div class="skeleton" style="height: 200px; border-radius: 12px;"></div>';
+    
+    try {
+        const response = await fetchWithTimeout(`${API_URL}/quiz/daily`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        
         const data = await response.json();
 
-        const container = document.getElementById('dailyQuizContainer');
-        
         if (response.ok && data) {
             const userAnswer = await getUserAnswer('daily', data._id);
             container.innerHTML = renderQuizQuestion(data, userAnswer, 'daily');
         } else {
-            container.innerHTML = '<p class="empty-message">No daily quiz available</p>';
+            container.innerHTML = '<p class="empty-message">📝 No daily quiz available today</p>';
         }
     } catch (error) {
         console.error('Error loading daily quiz:', error);
+        container.innerHTML = '<p class="empty-message error">⚠️ Failed to load daily quiz</p>';
     }
 }
 
-// Load Competitive Quiz
+// Enhanced Load Competitive Quiz
 async function loadCompetitiveQuiz() {
+    const container = document.getElementById('topicsContainer');
+    if (!container) return;
+    
+    container.innerHTML = '<div class="skeleton" style="height: 150px; border-radius: 12px;"></div>'.repeat(3);
+    
     try {
-        const response = await fetch(`${API_URL}/quiz/topics`, {
+        const response = await fetchWithTimeout(`${API_URL}/quiz/topics`, {
             headers: { 'Authorization': `Bearer ${authToken}` }
         });
+        
         const data = await response.json();
 
-        const container = document.getElementById('topicsContainer');
-        
         if (response.ok && data.length > 0) {
             container.innerHTML = data.map(topic => `
-                <button class="topic-btn" onclick="loadTopicQuestions('${topic._id}', '${topic.name}')">
-                    ${topic.name}
+                <button class="topic-btn" onclick="loadTopicQuestions('${topic._id}', '${escapeHtml(topic.name)}')" aria-label="Load ${escapeHtml(topic.name)} quiz">
+                    ${escapeHtml(topic.name)}
                 </button>
             `).join('');
         } else {
-            container.innerHTML = '<p class="empty-message">No topics available</p>';
+            container.innerHTML = '<p class="empty-message">📚 No topics available yet</p>';
         }
     } catch (error) {
         console.error('Error loading topics:', error);
+        container.innerHTML = '<p class="empty-message error">⚠️ Failed to load topics</p>';
     }
 }
 
 // Load Topic Questions
 async function loadTopicQuestions(topicId, topicName) {
+    const container = document.getElementById('questionsContainer');
+    const topicsContainer = document.getElementById('topicsContainer');
+    
+    if (!container || !topicsContainer) return;
+    
+    container.innerHTML = '<div class="skeleton" style="height: 300px; border-radius: 12px;"></div>';
+    topicsContainer.style.display = 'none';
+    container.style.display = 'block';
+    
     try {
-        const response = await fetch(`${API_URL}/quiz/topic/${topicId}`, {
+        const response = await fetchWithTimeout(`${API_URL}/quiz/topic/${topicId}`, {
             headers: { 'Authorization': `Bearer ${authToken}` }
         });
+        
         const data = await response.json();
 
-        const container = document.getElementById('questionsContainer');
-        const topicsContainer = document.getElementById('topicsContainer');
-        
-        if (response.ok && data.questions.length > 0) {
-            topicsContainer.style.display = 'none';
-            container.style.display = 'block';
-            
-            let html = `<button class="back-to-topics" onclick="backToTopics()">← Back to Topics</button>`;
-            html += `<h4 style="margin-bottom: 20px; color: var(--primary-color);">${topicName}</h4>`;
+        if (response.ok && data.questions && data.questions.length > 0) {
+            let html = `<button class="back-to-topics" onclick="backToTopics()" aria-label="Back to topics">← Back to Topics</button>`;
+            html += `<h4 style="margin-bottom: 20px; color: var(--primary-600); font-size: 1.5rem;">${escapeHtml(topicName)}</h4>`;
             
             for (const question of data.questions) {
                 const userAnswer = await getUserAnswer('competitive', question._id);
@@ -282,28 +565,41 @@ async function loadTopicQuestions(topicId, topicName) {
             }
             
             container.innerHTML = html;
+        } else {
+            container.innerHTML = `
+                <button class="back-to-topics" onclick="backToTopics()">← Back to Topics</button>
+                <p class="empty-message">No questions available in this topic</p>
+            `;
         }
     } catch (error) {
         console.error('Error loading topic questions:', error);
+        container.innerHTML = `
+            <button class="back-to-topics" onclick="backToTopics()">← Back to Topics</button>
+            <p class="empty-message error">⚠️ Failed to load questions</p>
+        `;
     }
 }
 
+// Make functions globally accessible
 window.loadTopicQuestions = loadTopicQuestions;
 
 function backToTopics() {
-    document.getElementById('topicsContainer').style.display = 'grid';
-    document.getElementById('questionsContainer').style.display = 'none';
+    const topicsContainer = document.getElementById('topicsContainer');
+    const questionsContainer = document.getElementById('questionsContainer');
+    
+    if (topicsContainer) topicsContainer.style.display = 'grid';
+    if (questionsContainer) questionsContainer.style.display = 'none';
 }
 
 window.backToTopics = backToTopics;
 
-// Render Quiz Question
+// Enhanced Quiz Question Renderer
 function renderQuizQuestion(question, userAnswer, type) {
     const answered = userAnswer !== null;
     const isCorrect = answered && userAnswer === question.correctOption;
     
     let html = '<div class="quiz-question">';
-    html += `<p class="question-text">${question.question}</p>`;
+    html += `<p class="question-text">${escapeHtml(question.question)}</p>`;
     html += '<div class="options-container">';
     
     ['optionA', 'optionB', 'optionC', 'optionD'].forEach((opt, index) => {
@@ -319,16 +615,19 @@ function renderQuizQuestion(question, userAnswer, type) {
         
         html += `<button class="${className}" 
                          onclick="answerQuestion('${question._id}', '${optionLetter}', '${type}')"
-                         ${answered ? 'disabled' : ''}>
-                    ${optionLetter}. ${question[opt]}
+                         ${answered ? 'disabled' : ''}
+                         aria-label="Option ${optionLetter}">
+                    ${optionLetter}. ${escapeHtml(question[opt])}
                  </button>`;
     });
     
     html += '</div>';
     
     if (answered) {
-        html += `<div class="quiz-result ${isCorrect ? 'correct' : 'wrong'}">
-                    ${isCorrect ? 'Your answer is correct! ✓' : 'Your answer is wrong ✗'}
+        const icon = isCorrect ? '✓' : '✗';
+        const text = isCorrect ? 'Correct!' : 'Incorrect';
+        html += `<div class="quiz-result ${isCorrect ? 'correct' : 'wrong'}" role="alert">
+                    ${icon} ${text}
                  </div>`;
     }
     
@@ -336,10 +635,12 @@ function renderQuizQuestion(question, userAnswer, type) {
     return html;
 }
 
-// Answer Question
+// Enhanced Answer Question
 async function answerQuestion(questionId, answer, type) {
     try {
-        const response = await fetch(`${API_URL}/quiz/answer`, {
+        showMessage('Submitting answer...', 'info');
+        
+        const response = await fetchWithTimeout(`${API_URL}/quiz/answer`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -350,17 +651,25 @@ async function answerQuestion(questionId, answer, type) {
 
         if (response.ok) {
             if (type === 'daily') {
-                loadDailyQuiz();
+                await loadDailyQuiz();
             } else {
-                const topicBtn = event.target.closest('.questions-container').querySelector('h4');
-                if (topicBtn) {
-                    const topicId = new URLSearchParams(window.location.search).get('topicId');
-                    location.reload();
+                // Reload current topic
+                const questionsContainer = document.getElementById('questionsContainer');
+                if (questionsContainer) {
+                    const topicHeader = questionsContainer.querySelector('h4');
+                    if (topicHeader) {
+                        // Get topic ID from URL or stored data
+                        location.reload(); // Simplified for now
+                    }
                 }
             }
+        } else {
+            const data = await response.json();
+            showMessage(data.message || 'Failed to submit answer', 'error');
         }
     } catch (error) {
         console.error('Error submitting answer:', error);
+        showMessage('Error submitting answer', 'error');
     }
 }
 
@@ -369,132 +678,201 @@ window.answerQuestion = answerQuestion;
 // Get User Answer
 async function getUserAnswer(type, questionId) {
     try {
-        const response = await fetch(`${API_URL}/quiz/user-answer?type=${type}&questionId=${questionId}`, {
-            headers: { 'Authorization': `Bearer ${authToken}` }
-        });
+        const response = await fetchWithTimeout(
+            `${API_URL}/quiz/user-answer?type=${type}&questionId=${questionId}`,
+            { headers: { 'Authorization': `Bearer ${authToken}` }}
+        );
+        
         const data = await response.json();
         return response.ok ? data.answer : null;
     } catch (error) {
+        console.error('Error getting user answer:', error);
         return null;
     }
 }
 
-// Load Papers
+// Enhanced Load Papers
 async function loadPapers() {
+    const recentContainer = document.getElementById('recentPapers');
+    if (!recentContainer) return;
+    
+    recentContainer.innerHTML = '<div class="skeleton" style="height: 200px; border-radius: 12px;"></div>'.repeat(3);
+    
     try {
-        const response = await fetch(`${API_URL}/papers`, {
+        const response = await fetchWithTimeout(`${API_URL}/papers`, {
             headers: { 'Authorization': `Bearer ${authToken}` }
         });
+        
         const data = await response.json();
 
         if (response.ok && data.length > 0) {
             const recentPapers = data.slice(0, 3);
-            document.getElementById('recentPapers').innerHTML = recentPapers.map(paper => `
-                <div class="paper-card" onclick="openPaper('${paper.pdfUrl}')">
-                    <h3 class="paper-title">${paper.topicName}</h3>
-                    <p class="paper-description">${paper.description}</p>
+            recentContainer.innerHTML = recentPapers.map(paper => `
+                <div class="paper-card" onclick="openPaper('${paper.pdfUrl}')" role="button" tabindex="0" aria-label="Open ${escapeHtml(paper.topicName)}">
+                    <h3 class="paper-title">${escapeHtml(paper.topicName)}</h3>
+                    <p class="paper-description">${escapeHtml(paper.description)}</p>
+                    <span class="paper-link-indicator">📄 Open PDF →</span>
                 </div>
             `).join('');
 
-            if (data.length > 3) {
-                document.getElementById('showMorePapers').style.display = 'block';
+            const showMoreBtn = document.getElementById('showMorePapers');
+            if (showMoreBtn) {
+                showMoreBtn.style.display = data.length > 3 ? 'inline-block' : 'none';
             }
 
             displayAllPapers(data);
         } else {
-            document.getElementById('recentPapers').innerHTML = '<p class="empty-message">No research papers available</p>';
+            recentContainer.innerHTML = '<p class="empty-message">📚 No research papers available</p>';
         }
     } catch (error) {
         console.error('Error loading papers:', error);
+        recentContainer.innerHTML = '<p class="empty-message error">⚠️ Failed to load papers</p>';
     }
 }
 
+// Display All Papers
 function displayAllPapers(papers) {
     const container = document.getElementById('allPapersList');
+    if (!container) return;
+    
     container.innerHTML = papers.map(paper => `
-        <div class="paper-card" onclick="openPaper('${paper.pdfUrl}')">
-            <h3 class="paper-title">${paper.topicName}</h3>
-            <p class="paper-description">${paper.description}</p>
+        <div class="paper-card" onclick="openPaper('${paper.pdfUrl}')" role="button" tabindex="0">
+            <h3 class="paper-title">${escapeHtml(paper.topicName)}</h3>
+            <p class="paper-description">${escapeHtml(paper.description)}</p>
+            <span class="paper-link-indicator">📄 Open PDF →</span>
         </div>
     `).join('');
 }
 
-function searchPapers(query) {
-    fetch(`${API_URL}/papers/search?q=${query}`, {
-        headers: { 'Authorization': `Bearer ${authToken}` }
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.length > 0) {
+// Enhanced Search Papers with debouncing
+async function searchPapers(query) {
+    const container = document.getElementById('allPapersList');
+    if (!container) return;
+    
+    if (!query.trim()) {
+        // Reload all papers if search is empty
+        const response = await fetchWithTimeout(`${API_URL}/papers`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        const data = await response.json();
+        displayAllPapers(data);
+        return;
+    }
+    
+    container.innerHTML = '<div class="skeleton" style="height: 200px; border-radius: 12px;"></div>'.repeat(3);
+    
+    try {
+        const response = await fetchWithTimeout(
+            `${API_URL}/papers/search?q=${encodeURIComponent(query)}`,
+            { headers: { 'Authorization': `Bearer ${authToken}` }}
+        );
+        
+        const data = await response.json();
+        
+        if (Array.isArray(data) && data.length > 0) {
+
             displayAllPapers(data);
         } else {
-            document.getElementById('allPapersList').innerHTML = '<p class="empty-message">No papers found</p>';
+            container.innerHTML = '<p class="empty-message">🔍 No papers found matching your search</p>';
         }
-    })
-    .catch(error => console.error('Error searching papers:', error));
+    } catch (error) {
+        console.error('Error searching papers:', error);
+        container.innerHTML = '<p class="empty-message error">⚠️ Search failed</p>';
+    }
 }
 
+// Open Paper
 function openPaper(url) {
-    window.open(url, '_blank');
+    if (url) {
+        window.open(url, '_blank', 'noopener,noreferrer');
+    }
 }
 
 window.openPaper = openPaper;
 
-// Load Channels
+// Enhanced Load Channels
 async function loadChannels() {
+    const container = document.getElementById('channelsContainer');
+    if (!container) return;
+    
+    container.innerHTML = '<div class="skeleton" style="height: 200px; border-radius: 12px;"></div>'.repeat(3);
+    
     try {
-        const response = await fetch(`${API_URL}/channels`, {
+        const response = await fetchWithTimeout(`${API_URL}/channels`, {
             headers: { 'Authorization': `Bearer ${authToken}` }
         });
+        
         const data = await response.json();
 
-        const container = document.getElementById('channelsContainer');
-        
         if (response.ok && data.length > 0) {
             container.innerHTML = data.map(channel => `
                 <div class="channel-card">
-                    <h3 class="channel-name">${channel.name}</h3>
-                    <p class="channel-description">${channel.description}</p>
-                    <a href="${channel.url}" target="_blank" class="channel-link">Visit Channel</a>
+                    <h3 class="channel-name">📺 ${escapeHtml(channel.name)}</h3>
+                    <p class="channel-description">${escapeHtml(channel.description)}</p>
+                    <a href="${channel.url}" target="_blank" rel="noopener noreferrer" class="channel-link">
+                        Visit Channel →
+                    </a>
                 </div>
             `).join('');
         } else {
-            container.innerHTML = '<p class="empty-message">No YouTube channels available</p>';
+            container.innerHTML = '<p class="empty-message">📺 No YouTube channels available</p>';
         }
     } catch (error) {
         console.error('Error loading channels:', error);
+        container.innerHTML = '<p class="empty-message error">⚠️ Failed to load channels</p>';
     }
 }
 
-// Load Apps
+// Enhanced Load Apps
 async function loadApps() {
+    const container = document.getElementById('appsContainer');
+    if (!container) return;
+    
+    container.innerHTML = '<div class="skeleton" style="height: 200px; border-radius: 12px;"></div>'.repeat(3);
+    
     try {
-        const response = await fetch(`${API_URL}/apps`, {
+        const response = await fetchWithTimeout(`${API_URL}/apps`, {
             headers: { 'Authorization': `Bearer ${authToken}` }
         });
+        
         const data = await response.json();
 
-        const container = document.getElementById('appsContainer');
-        
         if (response.ok && data.length > 0) {
             container.innerHTML = data.map(app => `
                 <div class="app-card">
-                    <h3 class="app-name">${app.name}</h3>
-                    <p class="app-features">${app.features}</p>
-                    <a href="${app.downloadUrl}" target="_blank" class="app-link">Download App</a>
+                    <h3 class="app-name">📱 ${escapeHtml(app.name)}</h3>
+                    <p class="app-features">${escapeHtml(app.features)}</p>
+                    <a href="${app.downloadUrl}" target="_blank" rel="noopener noreferrer" class="app-link">
+                        Download App →
+                    </a>
                 </div>
             `).join('');
         } else {
-            container.innerHTML = '<p class="empty-message">No apps available</p>';
+            container.innerHTML = '<p class="empty-message">📱 No apps available</p>';
         }
     } catch (error) {
         console.error('Error loading apps:', error);
+        container.innerHTML = '<p class="empty-message error">⚠️ Failed to load apps</p>';
     }
 }
 
-// Admin Dashboard (continued in admin.js for organization)
+// XSS Protection - Escape HTML
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Admin Dashboard
+
 function openAdminDashboard() {
-    document.getElementById('adminModal').style.display = 'block';
-    loadAdminData();
-    setupAdminListeners();
+    openModal('adminModal');
+
+    if (typeof loadAdminData === 'function') {
+        loadAdminData();
+    }
+
+    if (typeof setupAdminListeners === 'function') {
+        setupAdminListeners();
+    }
 }
