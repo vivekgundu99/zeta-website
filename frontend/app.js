@@ -560,12 +560,9 @@ async function loadTopicQuestions(topicId, topicName) {
             
             for (const question of data.questions) {
                 question.topicId = topicId;
-                const questionData = await getUserAnswerAndCorrect(question._id);
-                // Render full question with answer info
+                const questionData = await getUserAnswerAndCorrect(question._id, 'competitive');
                 html += renderQuizQuestion(questionData, questionData.answer, 'competitive');
             }
-
-            
             container.innerHTML = html;
         } else {
             container.innerHTML = `
@@ -656,9 +653,9 @@ async function answerQuestion(questionId, answer, type, topicId) {
         if (response.ok && topicId) {
             const questionDiv = document.getElementById(`question-${questionId}`);
             if (questionDiv) {
-                // Fetch updated question data including correct answer
-                const questionData = await getUserAnswerAndCorrect(questionId);
-                questionDiv.innerHTML = renderQuizQuestion(questionData, questionData.answer, 'competitive');
+                // Fetch updated question with correct answer
+                const questionData = await getUserAnswerAndCorrect(questionId, type);
+                questionDiv.innerHTML = renderQuizQuestion(questionData, questionData.answer, type);
             }
         } else if (!response.ok) {
             const data = await response.json();
@@ -669,18 +666,17 @@ async function answerQuestion(questionId, answer, type, topicId) {
         showMessage('Error submitting answer', 'error');
     }
 }
-
 // Fetch the user's submitted answer for a given question
 // Fetch user's answer and full question data
-async function getUserAnswerAndCorrect(questionId) {
+async function getUserAnswerAndCorrect(questionId, type) {
     try {
         const response = await fetchWithTimeout(
-            `${API_URL}/quiz/user-answer?type=competitive&questionId=${questionId}`,
+            `${API_URL}/quiz/user-answer?type=${type}&questionId=${questionId}`,
             { headers: { 'Authorization': `Bearer ${authToken}` } }
         );
         const data = await response.json();
 
-        if (response.ok) {
+        if (response.ok && data.question) {
             return {
                 _id: data.question._id,
                 question: data.question.question,
@@ -699,7 +695,6 @@ async function getUserAnswerAndCorrect(questionId) {
         return { _id: questionId, answer: null, correctOption: null };
     }
 }
-
 
 
 // Enhanced Load Papers
