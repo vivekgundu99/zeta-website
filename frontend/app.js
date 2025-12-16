@@ -861,18 +861,24 @@ async function loadChannels() {
         const data = await response.json();
 
         if (response.ok && data.length > 0) {
-            container.innerHTML = data.map(channel => `
-                <div class="channel-card">
-                    ${channel.photoUrl ? `<img src="${channel.photoUrl}" alt="${escapeHtml(channel.name)}" class="card-image">` : `<div class="card-image" style="background: linear-gradient(135deg, var(--primary-600), var(--primary-700)); display: flex; align-items: center; justify-content: center; font-size: 4rem;">📺</div>`}
-                    <div class="card-content">
-                        <h3 class="channel-name">${escapeHtml(channel.name)}</h3>
-                        <p class="channel-description">${escapeHtml(channel.description)}</p>
-                        <a href="${channel.url}" target="_blank" rel="noopener noreferrer" class="channel-link">
-                            Visit Channel →
-                        </a>
+            container.innerHTML = data.map(channel => {
+                const imageHtml = channel.photoUrl && channel.photoUrl.trim() !== '' 
+                    ? `<img src="${escapeHtml(channel.photoUrl)}" alt="${escapeHtml(channel.name)}" class="card-image" onerror="this.onerror=null; this.outerHTML='<div class=\\'card-image\\' style=\\'background: linear-gradient(135deg, var(--primary-600), var(--primary-700)); display: flex; align-items: center; justify-content: center; font-size: 4rem;\\'>📺</div>';">` 
+                    : `<div class="card-image" style="background: linear-gradient(135deg, var(--primary-600), var(--primary-700)); display: flex; align-items: center; justify-content: center; font-size: 4rem;">📺</div>`;
+                
+                return `
+                    <div class="channel-card">
+                        ${imageHtml}
+                        <div class="card-content">
+                            <h3 class="channel-name">${escapeHtml(channel.name)}</h3>
+                            <p class="channel-description">${escapeHtml(channel.description)}</p>
+                            <a href="${channel.url}" target="_blank" rel="noopener noreferrer" class="channel-link">
+                                Visit Channel →
+                            </a>
+                        </div>
                     </div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
         } else {
             container.innerHTML = '<p class="empty-message">📺 No YouTube channels available</p>';
         }
@@ -897,18 +903,24 @@ async function loadApps() {
         const data = await response.json();
 
         if (response.ok && data.length > 0) {
-            container.innerHTML = data.map(app => `
-                <div class="app-card">
-                    ${app.photoUrl ? `<img src="${app.photoUrl}" alt="${escapeHtml(app.name)}" class="card-image">` : `<div class="card-image" style="background: linear-gradient(135deg, var(--primary-600), var(--primary-700)); display: flex; align-items: center; justify-content: center; font-size: 4rem;">📱</div>`}
-                    <div class="card-content">
-                        <h3 class="app-name">${escapeHtml(app.name)}</h3>
-                        <p class="app-features">${escapeHtml(app.features)}</p>
-                        <a href="${app.downloadUrl}" target="_blank" rel="noopener noreferrer" class="app-link">
-                            Download App →
-                        </a>
+            container.innerHTML = data.map(app => {
+                const imageHtml = app.photoUrl && app.photoUrl.trim() !== '' 
+                    ? `<img src="${escapeHtml(app.photoUrl)}" alt="${escapeHtml(app.name)}" class="card-image" onerror="this.onerror=null; this.outerHTML='<div class=\\'card-image\\' style=\\'background: linear-gradient(135deg, var(--primary-600), var(--primary-700)); display: flex; align-items: center; justify-content: center; font-size: 4rem;\\'>📱</div>';">` 
+                    : `<div class="card-image" style="background: linear-gradient(135deg, var(--primary-600), var(--primary-700)); display: flex; align-items: center; justify-content: center; font-size: 4rem;">📱</div>`;
+                
+                return `
+                    <div class="app-card">
+                        ${imageHtml}
+                        <div class="card-content">
+                            <h3 class="app-name">${escapeHtml(app.name)}</h3>
+                            <p class="app-features">${escapeHtml(app.features)}</p>
+                            <a href="${app.downloadUrl}" target="_blank" rel="noopener noreferrer" class="app-link">
+                                Download App →
+                            </a>
+                        </div>
                     </div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
         } else {
             container.innerHTML = '<p class="empty-message">📱 No apps available</p>';
         }
