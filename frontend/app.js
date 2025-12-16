@@ -680,6 +680,23 @@ async function answerQuestion(questionId, answer, type, topicId = null) {
         showMessage('Error submitting answer', 'error');
     }
 }
+// Fetch the user's submitted answer for a given question
+async function getUserAnswer(type, questionId) {
+    try {
+        const response = await fetchWithTimeout(
+            `${API_URL}/quiz/user-answer?type=${type}&questionId=${questionId}`,
+            {
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            }
+        );
+
+        const data = await response.json();
+        return response.ok ? data.answer : null; // returns 'A', 'B', 'C', 'D' or null if not answered
+    } catch (error) {
+        console.error('Error getting user answer:', error);
+        return null;
+    }
+}
 
 // Enhanced Load Papers
 async function loadPapers() {
