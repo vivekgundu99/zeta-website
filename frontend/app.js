@@ -492,6 +492,9 @@ async function loadDailyQuiz() {
         if (response.ok && data) {
             const userAnswer = await getUserAnswer('daily', data._id);
             container.innerHTML = renderQuizQuestion(data, userAnswer, 'daily');
+            
+            // Add event delegation for daily quiz option buttons
+            setupQuizEventDelegation(container);
         } else {
             container.innerHTML = '<p class="empty-message">📝 No daily quiz available today</p>';
         }
@@ -566,6 +569,9 @@ async function loadTopicQuestions(topicId, topicName) {
             }
             
             container.innerHTML = html;
+            
+            // Add event delegation for option buttons
+            setupQuizEventDelegation(container);
         } else {
             container.innerHTML = `
                 <button class="back-to-topics" onclick="backToTopics()">← Back to Topics</button>
@@ -618,8 +624,11 @@ function renderQuizQuestion(question, userAnswer, type) {
             else if (isUserAnswer) className += ' wrong';
         }
         
+        // Use data attributes and event delegation instead of onclick
         html += `<button class="${className}" 
-                         onclick="answerQuestion('${question._id}', '${optionLetter}', '${type}')"
+                         data-question-id="${question._id}"
+                         data-answer="${optionLetter}"
+                         data-type="${type}"
                          ${answered ? 'disabled' : ''}
                          aria-label="Option ${optionLetter}">
                     ${optionLetter}. ${escapeHtml(question[opt])}
@@ -638,6 +647,32 @@ function renderQuizQuestion(question, userAnswer, type) {
     
     html += '</div>';
     return html;
+}
+
+// Setup Event Delegation for Quiz Buttons
+function setupQuizEventDelegation(container) {
+    // Remove any existing listeners to prevent duplicates
+    const oldContainer = container.cloneNode(true);
+    container.parentNode.replaceChild(oldContainer, container);
+    
+    // Add event listener to the container
+    oldContainer.addEventListener('click', async (e) => {
+        const button = e.target.closest('.option-btn');
+        
+        // Check if clicked element is an option button and not disabled
+        if (button && !button.disabled) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const questionId = button.getAttribute('data-question-id');
+            const answer = button.getAttribute('data-answer');
+            const type = button.getAttribute('data-type');
+            
+            if (questionId && answer && type) {
+                await answerQuestion(questionId, answer, type);
+            }
+        }
+    });
 }
 
 // Enhanced Answer Question - No Page Refresh
@@ -660,7 +695,7 @@ async function answerQuestion(questionId, answer, type) {
             if (type === 'daily') {
                 // Reload daily quiz
                 await loadDailyQuiz();
-            } else {
+            } else if (type === 'competitive') {
                 // Reload competitive quiz topic without page refresh
                 if (currentTopicId && currentTopicName) {
                     await loadTopicQuestions(currentTopicId, currentTopicName);
