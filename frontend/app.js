@@ -598,11 +598,11 @@ function renderQuizQuestion(question, userAnswer, type) {
     const answered = userAnswer !== null;
     const isCorrect = answered && userAnswer === question.correctOption;
 
-    let html = `<div class="quiz-question" id="question-${question._id}">`; // Add unique ID
-    html += `<p class="question-text">${escapeHtml(question.question)}</p>`;
+    let html = `<div class="quiz-question" id="question-${question._id}">`;
+    html += `<p class="question-text">${escapeHtml(question.question || '')}</p>`;
     html += '<div class="options-container">';
 
-    ['optionA', 'optionB', 'optionC', 'optionD'].forEach((opt, index) => {
+    ['optionA','optionB','optionC','optionD'].forEach((opt, index) => {
         const optionLetter = String.fromCharCode(65 + index);
         const isUserAnswer = answered && userAnswer === optionLetter;
         const isCorrectOption = question.correctOption === optionLetter;
@@ -614,11 +614,11 @@ function renderQuizQuestion(question, userAnswer, type) {
         }
 
         html += `<button class="${className}" 
-                    onclick="answerQuestion('${question._id}', '${optionLetter}', '${type}')"
-                    ${answered ? 'disabled' : ''}
-                    aria-label="Option ${optionLetter}">
-                ${optionLetter}. ${escapeHtml(question[opt])}
-            </button>`;
+                        onclick="answerQuestion('${question._id}', '${optionLetter}', '${type}', '${question.topicId || ''}')"
+                        ${answered ? 'disabled' : ''}
+                        aria-label="Option ${optionLetter}">
+                    ${optionLetter}. ${escapeHtml(question[opt] || '')}
+                </button>`;
     });
 
     html += '</div>';
@@ -636,8 +636,9 @@ function renderQuizQuestion(question, userAnswer, type) {
 }
 
 
+
 // Enhanced Answer Question
-async function answerQuestion(questionId, answer, type, topicId = null) {
+async function answerQuestion(questionId, answer, type, topicId) {
     try {
         showMessage('Submitting answer...', 'info');
 
@@ -650,28 +651,17 @@ async function answerQuestion(questionId, answer, type, topicId = null) {
             body: JSON.stringify({ questionId, answer, type })
         });
 
-        if (response.ok) {
-            if (type === 'daily') {
-                await loadDailyQuiz();
-            } else if (topicId) {
-                // Reload only the updated question
-                const topicResponse = await fetchWithTimeout(`${API_URL}/quiz/topic/${topicId}`, {
-                    headers: { 'Authorization': `Bearer ${authToken}` }
-                });
-                const topicData = await topicResponse.json();
-                if (!topicData.questions) return;
-
-                for (const q of topicData.questions) {
-                    if (q._id === questionId) {
-                        const questionDiv = document.getElementById(`question-${q._id}`);
-                        if (questionDiv) {
-                            const userAnswer = await getUserAnswer('competitive', q._id);
-                            questionDiv.innerHTML = renderQuizQuestion(q, userAnswer, 'competitive');
-                        }
-                    }
-                }
+        if (response.ok && topicId) {
+            // Only reload the updated question
+            const questionDiv = document.getElementById(`question-${questionId}`);
+            if (questionDiv) {
+                const data = await getUserAnswerAndCorrect(questionId);
+                questionDiv.innerHTML = renderQuizQuestion({
+                    _id: questionId,
+                    correctOption: data.correctOption
+                }, data.answer, 'competitive');
             }
-        } else {
+        } else if (!response.ok) {
             const data = await response.json();
             showMessage(data.message || 'Failed to submit answer', 'error');
         }
@@ -680,23 +670,25 @@ async function answerQuestion(questionId, answer, type, topicId = null) {
         showMessage('Error submitting answer', 'error');
     }
 }
+
 // Fetch the user's submitted answer for a given question
-async function getUserAnswer(type, questionId) {
+async function getUserAnswerAndCorrect(questionId) {
     try {
         const response = await fetchWithTimeout(
-            `${API_URL}/quiz/user-answer?type=${type}&questionId=${questionId}`,
+            `${API_URL}/quiz/user-answer?type=competitive&questionId=${questionId}`,
             {
                 headers: { 'Authorization': `Bearer ${authToken}` }
             }
         );
-
         const data = await response.json();
-        return response.ok ? data.answer : null; // returns 'A', 'B', 'C', 'D' or null if not answered
+        // data.answer = user's answer, data.correctOption = correct answer
+        return response.ok ? data : { answer: null, correctOption: null };
     } catch (error) {
         console.error('Error getting user answer:', error);
-        return null;
+        return { answer: null, correctOption: null };
     }
 }
+
 
 // Enhanced Load Papers
 async function loadPapers() {
