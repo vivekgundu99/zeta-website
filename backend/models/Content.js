@@ -32,6 +32,11 @@ const channelSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    photoUrl: {
+        type: String,
+        required: false,
+        default: ''
+    },
     createdAt: {
         type: Date,
         default: Date.now
@@ -50,6 +55,11 @@ const appSchema = new mongoose.Schema({
     downloadUrl: {
         type: String,
         required: true
+    },
+    photoUrl: {
+        type: String,
+        required: false,
+        default: ''
     },
     createdAt: {
         type: Date,

@@ -561,11 +561,24 @@ async function loadTopicQuestions(topicId, topicName) {
 
         if (response.ok && data.questions && data.questions.length > 0) {
             let html = `<button class="back-to-topics" onclick="backToTopics()" aria-label="Back to topics">← Back to Topics</button>`;
-            html += `<h4 style="margin-bottom: 20px; color: var(--primary-600); font-size: 1.5rem;">${escapeHtml(topicName)}</h4>`;
             
+            // Count attempted questions
+            let attemptedCount = 0;
             for (const question of data.questions) {
                 const userAnswer = await getUserAnswer('competitive', question._id);
-                html += renderQuizQuestion(question, userAnswer, 'competitive');
+                if (userAnswer) attemptedCount++;
+            }
+            
+            html += `<h4 style="margin-bottom: 20px; color: var(--primary-600); font-size: 1.5rem;">${escapeHtml(topicName)}</h4>`;
+            html += `<div style="margin-bottom: 20px; padding: 12px; background: var(--primary-50); border-radius: 8px; text-align: center; font-weight: 600; color: var(--primary-600);">
+                        Questions Attempted: ${attemptedCount}/${data.questions.length}
+                     </div>`;
+            
+            let questionNumber = 1;
+            for (const question of data.questions) {
+                const userAnswer = await getUserAnswer('competitive', question._id);
+                html += renderQuizQuestion(question, userAnswer, 'competitive', questionNumber);
+                questionNumber++;
             }
             
             container.innerHTML = html;
@@ -605,11 +618,14 @@ function backToTopics() {
 window.backToTopics = backToTopics;
 
 // Enhanced Quiz Question Renderer
-function renderQuizQuestion(question, userAnswer, type) {
+function renderQuizQuestion(question, userAnswer, type, questionNumber = null) {
     const answered = userAnswer !== null;
     const isCorrect = answered && userAnswer === question.correctOption;
     
     let html = '<div class="quiz-question">';
+    if (questionNumber) {
+        html += `<div style="font-weight: 700; color: var(--primary-600); margin-bottom: 8px; font-size: 0.875rem;">Question ${questionNumber}</div>`;
+    }
     html += `<p class="question-text">${escapeHtml(question.question)}</p>`;
     html += '<div class="options-container">';
     
@@ -847,6 +863,7 @@ async function loadChannels() {
         if (response.ok && data.length > 0) {
             container.innerHTML = data.map(channel => `
                 <div class="channel-card">
+                    ${channel.photoUrl ? `<img src="${channel.photoUrl}" alt="${escapeHtml(channel.name)}" class="card-image">` : ''}
                     <h3 class="channel-name">📺 ${escapeHtml(channel.name)}</h3>
                     <p class="channel-description">${escapeHtml(channel.description)}</p>
                     <a href="${channel.url}" target="_blank" rel="noopener noreferrer" class="channel-link">
@@ -880,6 +897,7 @@ async function loadApps() {
         if (response.ok && data.length > 0) {
             container.innerHTML = data.map(app => `
                 <div class="app-card">
+                    ${app.photoUrl ? `<img src="${app.photoUrl}" alt="${escapeHtml(app.name)}" class="card-image">` : ''}
                     <h3 class="app-name">📱 ${escapeHtml(app.name)}</h3>
                     <p class="app-features">${escapeHtml(app.features)}</p>
                     <a href="${app.downloadUrl}" target="_blank" rel="noopener noreferrer" class="app-link">

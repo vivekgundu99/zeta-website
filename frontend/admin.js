@@ -707,6 +707,10 @@ function showAddChannelForm() {
                     <label>Channel URL</label>
                     <input type="url" id="channelUrl" required>
                 </div>
+                <div class="form-group">
+                    <label>Photo URL (Optional)</label>
+                    <input type="url" id="channelPhoto" placeholder="https://example.com/image.jpg">
+                </div>
                 <button type="submit" class="btn-primary">Add Channel</button>
                 <button type="button" class="btn-secondary" onclick="loadAdminChannels()">Cancel</button>
             </form>
@@ -721,7 +725,8 @@ function showAddChannelForm() {
         const channelData = {
             name: document.getElementById('channelName').value,
             description: document.getElementById('channelDesc').value,
-            url: document.getElementById('channelUrl').value
+            url: document.getElementById('channelUrl').value,
+            photoUrl: document.getElementById('channelPhoto').value
         };
 
         try {
@@ -771,6 +776,10 @@ window.editChannel = async function(id) {
                         <label>Channel URL</label>
                         <input type="url" id="editChannelUrl" value="${channel.url}" required>
                     </div>
+                    <div class="form-group">
+                        <label>Photo URL (Optional)</label>
+                        <input type="url" id="editChannelPhoto" value="${channel.photoUrl || ''}" placeholder="https://example.com/image.jpg">
+                    </div>
                     <button type="submit" class="btn-primary">Update Channel</button>
                     <button type="button" class="btn-secondary" onclick="loadAdminChannels()">Cancel</button>
                 </form>
@@ -785,7 +794,8 @@ window.editChannel = async function(id) {
             const channelData = {
                 name: document.getElementById('editChannelName').value,
                 description: document.getElementById('editChannelDesc').value,
-                url: document.getElementById('editChannelUrl').value
+                url: document.getElementById('editChannelUrl').value,
+                photoUrl: document.getElementById('editChannelPhoto').value
             };
 
             try {
@@ -880,6 +890,10 @@ function showAddAppForm() {
                     <label>Download URL</label>
                     <input type="url" id="appDownload" required>
                 </div>
+                <div class="form-group">
+                    <label>Photo URL (Optional)</label>
+                    <input type="url" id="appPhoto" placeholder="https://example.com/image.jpg">
+                </div>
                 <button type="submit" class="btn-primary">Add App</button>
                 <button type="button" class="btn-secondary" onclick="loadAdminApps()">Cancel</button>
             </form>
@@ -894,7 +908,8 @@ function showAddAppForm() {
         const appData = {
             name: document.getElementById('appName').value,
             features: document.getElementById('appFeatures').value,
-            downloadUrl: document.getElementById('appDownload').value
+            downloadUrl: document.getElementById('appDownload').value,
+            photoUrl: document.getElementById('appPhoto').value
         };
 
         try {
@@ -944,6 +959,10 @@ window.editApp = async function(id) {
                         <label>Download URL</label>
                         <input type="url" id="editAppDownload" value="${app.downloadUrl}" required>
                     </div>
+                    <div class="form-group">
+                        <label>Photo URL (Optional)</label>
+                        <input type="url" id="editAppPhoto" value="${app.photoUrl || ''}" placeholder="https://example.com/image.jpg">
+                    </div>
                     <button type="submit" class="btn-primary">Update App</button>
                     <button type="button" class="btn-secondary" onclick="loadAdminApps()">Cancel</button>
                 </form>
@@ -958,7 +977,8 @@ window.editApp = async function(id) {
             const appData = {
                 name: document.getElementById('editAppName').value,
                 features: document.getElementById('editAppFeatures').value,
-                downloadUrl: document.getElementById('editAppDownload').value
+                downloadUrl: document.getElementById('editAppDownload').value,
+                photoUrl: document.getElementById('editAppPhoto').value
             };
 
             try {
