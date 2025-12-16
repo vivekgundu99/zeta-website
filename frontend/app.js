@@ -560,7 +560,7 @@ async function loadTopicQuestions(topicId, topicName) {
             
             for (const question of data.questions) {
                 question.topicId = topicId;
-                const questionData = await getUserAnswerAndCorrect(question._id);
+                const questionData = await getUserAnswer(question._id);
                 // Render full question with answer info
                 html += renderQuizQuestion(questionData, questionData.answer, 'competitive');
             }
@@ -657,7 +657,7 @@ async function answerQuestion(questionId, answer, type, topicId) {
             const questionDiv = document.getElementById(`question-${questionId}`);
             if (questionDiv) {
                 // Fetch updated question data including correct answer
-                const questionData = await getUserAnswerAndCorrect(questionId);
+                const questionData = await getUserAnswer(questionId);
                 questionDiv.innerHTML = renderQuizQuestion(questionData, questionData.answer, 'competitive');
             }
         } else if (!response.ok) {
@@ -672,7 +672,7 @@ async function answerQuestion(questionId, answer, type, topicId) {
 
 // Fetch the user's submitted answer for a given question
 // Fetch user's answer and full question data
-async function getUserAnswerAndCorrect(questionId) {
+async function getUserAnswer(questionId) {
     try {
         const response = await fetchWithTimeout(
             `${API_URL}/quiz/user-answer?type=competitive&questionId=${questionId}`,
