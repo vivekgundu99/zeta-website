@@ -1,4 +1,5 @@
 // Enhanced App.js - Professional Implementation
+
 let authToken = null;
 let currentUser = null;
 let debounceTimer = null;
@@ -80,7 +81,7 @@ function updateThemeIcon(theme) {
 // Theme toggle with smooth transition
 const themeToggle = document.getElementById('themeToggle');
 if (themeToggle) {
-    themeToggle.addEventListener('click', () => {
+    themeToggle.addEventListener('click', (event) => {
         const currentTheme = document.body.classList.contains('light-theme') ? 'light' : 'dark';
         const newTheme = currentTheme === 'light' ? 'dark' : 'light';
         applyTheme(newTheme);
@@ -645,15 +646,8 @@ async function answerQuestion(questionId, answer, type) {
             if (type === 'daily') {
                 await loadDailyQuiz();
             } else {
-                // Reload current topic
-                const questionsContainer = document.getElementById('questionsContainer');
-                if (questionsContainer) {
-                    const topicHeader = questionsContainer.querySelector('h4');
-                    if (topicHeader) {
-                        // Get topic ID from URL or stored data
-                        location.reload(); // Simplified for now
-                    }
-                }
+                // Reload current topic - need to extract topic info
+                location.reload();
             }
         } else {
             const data = await response.json();
@@ -861,4 +855,8 @@ function openAdminDashboard() {
         loadAdminData();
     }
     if (typeof setupAdminListeners === 'function') {
-        setupAdminListeners
+        setupAdminListeners();
+    }
+}
+
+console.log('✨ Zeta App System Initialized');
