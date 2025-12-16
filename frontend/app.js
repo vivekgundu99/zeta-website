@@ -559,10 +559,12 @@ async function loadTopicQuestions(topicId, topicName) {
             html += `<h4 style="margin-bottom: 20px; color: var(--primary-600); font-size: 1.5rem;">${escapeHtml(topicName)}</h4>`;
             
             for (const question of data.questions) {
-                question.topicId = topicId; // Add topicId to each question
-                const userAnswer = await getUserAnswer('competitive', question._id);
-                html += renderQuizQuestion(question, userAnswer, 'competitive');
+                question.topicId = topicId;
+                const questionData = await getUserAnswerAndCorrect(question._id);
+                // Render full question with answer info
+                html += renderQuizQuestion(questionData, questionData.answer, 'competitive');
             }
+
             
             container.innerHTML = html;
         } else {
@@ -652,42 +654,52 @@ async function answerQuestion(questionId, answer, type, topicId) {
         });
 
         if (response.ok && topicId) {
-            // Only reload the updated question
             const questionDiv = document.getElementById(`question-${questionId}`);
             if (questionDiv) {
-                const data = await getUserAnswer(questionId);
-                questionDiv.innerHTML = renderQuizQuestion({
-                    _id: questionId,
-                    correctOption: data.correctOption
-                }, data.answer, 'competitive');
+                // Fetch updated question data including correct answer
+                const questionData = await getUserAnswerAndCorrect(questionId);
+                questionDiv.innerHTML = renderQuizQuestion(questionData, questionData.answer, 'competitive');
             }
         } else if (!response.ok) {
             const data = await response.json();
             showMessage(data.message || 'Failed to submit answer', 'error');
         }
-    } catch (error) {
-        console.error('Error submitting answer:', error);
+    } catch (err) {
+        console.error('Error submitting answer:', err);
         showMessage('Error submitting answer', 'error');
     }
 }
 
 // Fetch the user's submitted answer for a given question
-async function getUserAnswer(questionId) {
+// Fetch user's answer and full question data
+async function getUserAnswerAndCorrect(questionId) {
     try {
         const response = await fetchWithTimeout(
             `${API_URL}/quiz/user-answer?type=competitive&questionId=${questionId}`,
-            {
-                headers: { 'Authorization': `Bearer ${authToken}` }
-            }
+            { headers: { 'Authorization': `Bearer ${authToken}` } }
         );
         const data = await response.json();
-        // data.answer = user's answer, data.correctOption = correct answer
-        return response.ok ? data : { answer: null, correctOption: null };
-    } catch (error) {
-        console.error('Error getting user answer:', error);
-        return { answer: null, correctOption: null };
+
+        if (response.ok) {
+            return {
+                _id: data.question._id,
+                question: data.question.question,
+                optionA: data.question.optionA,
+                optionB: data.question.optionB,
+                optionC: data.question.optionC,
+                optionD: data.question.optionD,
+                correctOption: data.correctOption,
+                answer: data.answer
+            };
+        } else {
+            return { _id: questionId, answer: null, correctOption: null };
+        }
+    } catch (err) {
+        console.error('Error fetching user answer:', err);
+        return { _id: questionId, answer: null, correctOption: null };
     }
 }
+
 
 
 // Enhanced Load Papers
