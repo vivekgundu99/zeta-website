@@ -3,6 +3,7 @@ const { DailyQuiz, Topic } = require('../models/Quiz');
 const User = require('../models/user');
 const connectDB = require('../lib/db');
 const jwt = require('jsonwebtoken');
+const setCorsHeaders = require('../lib/cors');
 
 // Helper to parse JSON body
 async function parseBody(req) {
@@ -20,36 +21,9 @@ async function parseBody(req) {
     });
 }
 
-// Get multiple user answers at once - ADD THIS NEW ENDPOINT
-if (path === '/api/quiz/user-answers-bulk' && req.method === 'POST') {
-    const body = await parseBody(req);
-    const { questionIds, type } = body;
-
-    const user = await User.findById(userId);
-    
-    const answers = {};
-    questionIds.forEach(qId => {
-        const answer = user.quizAnswers.find(
-            a => a.questionId.toString() === qId && a.type === type
-        );
-        if (answer) {
-            answers[qId] = answer.answer;
-        }
-    });
-
-    return res.json({ answers });
-}
 module.exports = async (req, res) => {
-    // Enable CORS
-    res.setHeader('Access-Control-Allow-Credentials', true);
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-    res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization');
-
-    if (req.method === 'OPTIONS') {
-        res.status(200).end();
-        return;
-    }
+    // Handle CORS
+    if (setCorsHeaders(req, res)) return;
 
     await connectDB();
 
@@ -132,6 +106,26 @@ module.exports = async (req, res) => {
             } else {
                 return res.status(404).json({ message: 'Answer not found' });
             }
+        }
+
+        // Get multiple user answers at once - BULK ENDPOINT
+        if (path === '/api/quiz/user-answers-bulk' && req.method === 'POST') {
+            const body = await parseBody(req);
+            const { questionIds, type } = body;
+
+            const user = await User.findById(userId);
+            
+            const answers = {};
+            questionIds.forEach(qId => {
+                const answer = user.quizAnswers.find(
+                    a => a.questionId.toString() === qId && a.type === type
+                );
+                if (answer) {
+                    answers[qId] = answer.answer;
+                }
+            });
+
+            return res.json({ answers });
         }
 
         res.status(404).json({ message: 'Route not found' });

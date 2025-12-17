@@ -344,7 +344,8 @@ Create a `.env` file in the `backend` directory:
 
 ```env
 # MongoDB Configuration
-MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/zeta?retryWrites=true&w=majority
+MONGODB_URI=example mongodb_uri
+w=majority
 
 # JWT Secret (generate a strong random string)
 JWT_SECRET=your_super_secret_jwt_key_change_this_in_production
