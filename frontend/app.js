@@ -9,6 +9,19 @@ const DEBOUNCE_DELAY = 300;
 const MESSAGE_DURATION = 3000;
 const API_TIMEOUT = 10000;
 
+// Convert Google Drive view links to direct image URLs
+function convertGoogleDriveUrl(url) {
+    if (!url) return '';
+    
+    // Check if it's a Google Drive link
+    const driveMatch = url.match(/drive\.google\.com\/file\/d\/([^\/]+)/);
+    if (driveMatch && driveMatch[1]) {
+        const fileId = driveMatch[1];
+        return `https://drive.google.com/uc?export=view&id=${fileId}`;
+    }
+    
+    return url; // Return original URL if not a Drive link
+}
 // Initialize with error handling
 document.addEventListener('DOMContentLoaded', () => {
     try {
@@ -872,6 +885,7 @@ window.openPaper = openPaper;
 
 // Enhanced Load Channels
 // Enhanced Load Channels
+// Enhanced Load Channels
 async function loadChannels() {
     const container = document.getElementById('channelsContainer');
     if (!container) return;
@@ -884,44 +898,32 @@ async function loadChannels() {
         });
         
         const data = await response.json();
-        
-        // DEBUG: Log the data
-        console.log('Channels data:', data);
-        data.forEach((channel, index) => {
-            console.log(`Channel ${index}:`, {
-                name: channel.name,
-                photoUrl: channel.photoUrl,
-                hasPhotoUrl: !!channel.photoUrl,
-                photoUrlLength: channel.photoUrl?.length
-            });
-        });
 
         if (response.ok && data.length > 0) {
-            container.innerHTML = data.map(channel => `
-                <div class="channel-card">
-                    ${channel.photoUrl && channel.photoUrl.trim() !== '' 
-                        ? `<img src="${channel.photoUrl}" alt="${escapeHtml(channel.name)}" class="card-image">` 
-                        : `<div class="card-image" style="background: linear-gradient(135deg, var(--primary-600), var(--primary-700)); display: flex; align-items: center; justify-content: center; font-size: 4rem;">📺</div>`
-                    }
-                    <div class="card-content">
-                        <h3 class="channel-name">${escapeHtml(channel.name)}</h3>
-                        <p class="channel-description">${escapeHtml(channel.description)}</p>
-                        <a href="${channel.url}" target="_blank" rel="noopener noreferrer" class="channel-link">
-                            Visit Channel →
-                        </a>
+            container.innerHTML = data.map(channel => {
+                const imageUrl = convertGoogleDriveUrl(channel.photoUrl); // Convert URL
+                return `
+                    <div class="channel-card">
+                        ${imageUrl && imageUrl.trim() !== '' 
+                            ? `<img src="${imageUrl}" alt="${escapeHtml(channel.name)}" class="card-image" crossorigin="anonymous">` 
+                            : `<div class="card-image" style="background: linear-gradient(135deg, var(--primary-600), var(--primary-700)); display: flex; align-items: center; justify-content: center; font-size: 4rem;">📺</div>`
+                        }
+                        <div class="card-content">
+                            <h3 class="channel-name">${escapeHtml(channel.name)}</h3>
+                            <p class="channel-description">${escapeHtml(channel.description)}</p>
+                            <a href="${channel.url}" target="_blank" rel="noopener noreferrer" class="channel-link">
+                                Visit Channel →
+                            </a>
+                        </div>
                     </div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
             
             // Add error handlers after DOM is created
             container.querySelectorAll('.card-image[src]').forEach(img => {
-                console.log('Image element src:', img.src); // DEBUG
                 img.addEventListener('error', function() {
-                    console.error('Failed to load image:', this.src); // DEBUG
+                    console.error('Failed to load image:', this.src);
                     this.outerHTML = '<div class="card-image" style="background: linear-gradient(135deg, var(--primary-600), var(--primary-700)); display: flex; align-items: center; justify-content: center; font-size: 4rem;">📺</div>';
-                });
-                img.addEventListener('load', function() {
-                    console.log('Successfully loaded image:', this.src); // DEBUG
                 });
             });
         } else {
@@ -933,6 +935,7 @@ async function loadChannels() {
     }
 }
 
+// Enhanced Load Apps
 // Enhanced Load Apps
 async function loadApps() {
     const container = document.getElementById('appsContainer');
@@ -948,25 +951,29 @@ async function loadApps() {
         const data = await response.json();
 
         if (response.ok && data.length > 0) {
-            container.innerHTML = data.map(app => `
-                <div class="app-card">
-                    ${app.photoUrl && app.photoUrl.trim() !== '' 
-                        ? `<img src="${app.photoUrl}" alt="${escapeHtml(app.name)}" class="card-image">` 
-                        : `<div class="card-image" style="background: linear-gradient(135deg, var(--primary-600), var(--primary-700)); display: flex; align-items: center; justify-content: center; font-size: 4rem;">📱</div>`
-                    }
-                    <div class="card-content">
-                        <h3 class="app-name">${escapeHtml(app.name)}</h3>
-                        <p class="app-features">${escapeHtml(app.features)}</p>
-                        <a href="${app.downloadUrl}" target="_blank" rel="noopener noreferrer" class="app-link">
-                            Download App →
-                        </a>
+            container.innerHTML = data.map(app => {
+                const imageUrl = convertGoogleDriveUrl(app.photoUrl); // Convert URL
+                return `
+                    <div class="app-card">
+                        ${imageUrl && imageUrl.trim() !== '' 
+                            ? `<img src="${app.photoUrl}" alt="${escapeHtml(app.name)}" class="card-image" crossorigin="anonymous">` 
+                            : `<div class="card-image" style="background: linear-gradient(135deg, var(--primary-600), var(--primary-700)); display: flex; align-items: center; justify-content: center; font-size: 4rem;">📱</div>`
+                        }
+                        <div class="card-content">
+                            <h3 class="app-name">${escapeHtml(app.name)}</h3>
+                            <p class="app-features">${escapeHtml(app.features)}</p>
+                            <a href="${app.downloadUrl}" target="_blank" rel="noopener noreferrer" class="app-link">
+                                Download App →
+                            </a>
+                        </div>
                     </div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
             
             // Add error handlers after DOM is created
             container.querySelectorAll('.card-image[src]').forEach(img => {
                 img.addEventListener('error', function() {
+                    console.error('Failed to load image:', this.src);
                     this.outerHTML = '<div class="card-image" style="background: linear-gradient(135deg, var(--primary-600), var(--primary-700)); display: flex; align-items: center; justify-content: center; font-size: 4rem;">📱</div>';
                 });
             });
