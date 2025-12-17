@@ -118,6 +118,10 @@
     {
       "src": "/api/help",
       "dest": "/api/help.js"
+    },
+    {
+      "src": "/api/quiz/user-answers-bulk",
+      "dest": "/api/quiz.js"
     }
   ]
 }

@@ -581,7 +581,6 @@ async function loadTopicQuestions(topicId, topicName) {
     
     if (!container || !topicsContainer) return;
     
-    // Store current topic info for reloading after answer submission
     currentTopicId = topicId;
     currentTopicName = topicName;
     
@@ -597,15 +596,26 @@ async function loadTopicQuestions(topicId, topicName) {
         const data = await response.json();
 
         if (response.ok && data.questions && data.questions.length > 0) {
-            let html = `<button class="back-to-topics" onclick="backToTopics()" aria-label="Back to topics">← Back to Topics</button>`;
+            // Fetch all user answers in ONE request
+            const questionIds = data.questions.map(q => q._id);
+            const answersResponse = await fetchWithTimeout(`${API_URL}/quiz/user-answers-bulk`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`
+                },
+                body: JSON.stringify({
+                    questionIds,
+                    type: 'competitive'
+                })
+            });
+            
+            const { answers } = await answersResponse.json();
             
             // Count attempted questions
-            let attemptedCount = 0;
-            for (const question of data.questions) {
-                const userAnswer = await getUserAnswer('competitive', question._id);
-                if (userAnswer) attemptedCount++;
-            }
+            const attemptedCount = Object.keys(answers).length;
             
+            let html = `<button class="back-to-topics" onclick="backToTopics()" aria-label="Back to topics">← Back to Topics</button>`;
             html += `<h4 style="margin-bottom: 20px; color: var(--primary-600); font-size: 1.5rem;">${escapeHtml(topicName)}</h4>`;
             html += `<div style="margin-bottom: 20px; padding: 12px; background: var(--primary-50); border-radius: 8px; text-align: center; font-weight: 600; color: var(--primary-600);">
                         Questions Attempted: ${attemptedCount}/${data.questions.length}
@@ -613,14 +623,12 @@ async function loadTopicQuestions(topicId, topicName) {
             
             let questionNumber = 1;
             for (const question of data.questions) {
-                const userAnswer = await getUserAnswer('competitive', question._id);
+                const userAnswer = answers[question._id] || null;
                 html += renderQuizQuestion(question, userAnswer, 'competitive', questionNumber);
                 questionNumber++;
             }
             
             container.innerHTML = html;
-            
-            // Add event delegation for option buttons
             setupQuizEventDelegation(container);
         } else {
             container.innerHTML = `
@@ -636,7 +644,6 @@ async function loadTopicQuestions(topicId, topicName) {
         `;
     }
 }
-
 // Make functions globally accessible
 window.loadTopicQuestions = loadTopicQuestions;
 

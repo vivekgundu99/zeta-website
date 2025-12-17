@@ -20,6 +20,25 @@ async function parseBody(req) {
     });
 }
 
+// Get multiple user answers at once - ADD THIS NEW ENDPOINT
+if (path === '/api/quiz/user-answers-bulk' && req.method === 'POST') {
+    const body = await parseBody(req);
+    const { questionIds, type } = body;
+
+    const user = await User.findById(userId);
+    
+    const answers = {};
+    questionIds.forEach(qId => {
+        const answer = user.quizAnswers.find(
+            a => a.questionId.toString() === qId && a.type === type
+        );
+        if (answer) {
+            answers[qId] = answer.answer;
+        }
+    });
+
+    return res.json({ answers });
+}
 module.exports = async (req, res) => {
     // Enable CORS
     res.setHeader('Access-Control-Allow-Credentials', true);
