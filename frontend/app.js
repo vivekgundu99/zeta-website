@@ -119,11 +119,12 @@ function createRipple(element, event) {
 }
 
 // Enhanced Welcome Popup with accessibility
+// Enhanced Welcome Popup with accessibility
 function showWelcomePopup() {
     const popup = document.getElementById('welcomePopup');
     if (popup) {
         popup.style.display = 'block';
-        popup.setAttribute('aria-hidden', 'false');
+        popup.removeAttribute('aria-hidden'); // Changed: remove instead of setting to false
         document.body.style.overflow = 'hidden';
         
         // Focus trap
@@ -164,17 +165,31 @@ function showMessage(message, type = 'success') {
 // Enhanced Event Listeners Setup
 function setupEventListeners() {
     // Continue Button
-    const continueBtn = document.getElementById('continueBtn');
-    if (continueBtn) {
-        continueBtn.addEventListener('click', () => {
-            const popup = document.getElementById('welcomePopup');
-            if (popup) {
-                popup.style.display = 'none';
-                popup.setAttribute('aria-hidden', 'true');
-                document.body.style.overflow = '';
-            }
-        });
-    }
+        const continueBtn = document.getElementById('continueBtn');
+        if (continueBtn) {
+            continueBtn.addEventListener('click', () => {
+                const popup = document.getElementById('welcomePopup');
+                if (popup) {
+                    // Remove focus from button BEFORE hiding
+                    continueBtn.blur();
+                    
+                    // Use setTimeout to ensure blur happens first
+                    setTimeout(() => {
+                        popup.style.display = 'none';
+                        popup.setAttribute('aria-hidden', 'true');
+                        document.body.style.overflow = '';
+                        
+                        // Focus on main content
+                        const mainContent = document.querySelector('.main-content');
+                        if (mainContent) {
+                            mainContent.setAttribute('tabindex', '-1');
+                            mainContent.focus();
+                            mainContent.removeAttribute('tabindex');
+                        }
+                    }, 0);
+                }
+            });
+        }
 
     // Account Button
     const accountBtn = document.getElementById('accountBtn');
@@ -279,7 +294,7 @@ function openModal(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) {
         modal.style.display = 'block';
-        modal.setAttribute('aria-hidden', 'false');
+        modal.removeAttribute('aria-hidden'); // Changed: remove instead of setting to false
         document.body.style.overflow = 'hidden';
         
         // Focus first focusable element
@@ -293,9 +308,18 @@ function openModal(modalId) {
 function closeModal(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) {
-        modal.style.display = 'none';
-        modal.setAttribute('aria-hidden', 'true');
-        document.body.style.overflow = '';
+        // Remove focus from any active element inside modal
+        const activeElement = document.activeElement;
+        if (modal.contains(activeElement)) {
+            activeElement.blur();
+        }
+        
+        // Use setTimeout to ensure blur happens first
+        setTimeout(() => {
+            modal.style.display = 'none';
+            modal.setAttribute('aria-hidden', 'true');
+            document.body.style.overflow = '';
+        }, 0);
     }
 }
 
@@ -863,7 +887,7 @@ async function loadChannels() {
         if (response.ok && data.length > 0) {
             container.innerHTML = data.map(channel => {
                 const imageHtml = channel.photoUrl && channel.photoUrl.trim() !== '' 
-                    ? `<img src="${escapeHtml(channel.photoUrl)}" alt="${escapeHtml(channel.name)}" class="card-image" onerror="this.onerror=null; this.outerHTML='<div class=\\'card-image\\' style=\\'background: linear-gradient(135deg, var(--primary-600), var(--primary-700)); display: flex; align-items: center; justify-content: center; font-size: 4rem;\\'>📺</div>';">` 
+                    ? `<img src="${channel.photoUrl}" alt="${escapeHtml(channel.name)}" class="card-image" onerror="this.onerror=null; this.outerHTML='<div class=\\'card-image\\' style=\\'background: linear-gradient(135deg, var(--primary-600), var(--primary-700)); display: flex; align-items: center; justify-content: center; font-size: 4rem;\\'>📺</div>';">` 
                     : `<div class="card-image" style="background: linear-gradient(135deg, var(--primary-600), var(--primary-700)); display: flex; align-items: center; justify-content: center; font-size: 4rem;">📺</div>`;
                 
                 return `
@@ -905,7 +929,7 @@ async function loadApps() {
         if (response.ok && data.length > 0) {
             container.innerHTML = data.map(app => {
                 const imageHtml = app.photoUrl && app.photoUrl.trim() !== '' 
-                    ? `<img src="${escapeHtml(app.photoUrl)}" alt="${escapeHtml(app.name)}" class="card-image" onerror="this.onerror=null; this.outerHTML='<div class=\\'card-image\\' style=\\'background: linear-gradient(135deg, var(--primary-600), var(--primary-700)); display: flex; align-items: center; justify-content: center; font-size: 4rem;\\'>📱</div>';">` 
+                    ? `<img src="${app.photoUrl}" alt="${escapeHtml(app.name)}" class="card-image" onerror="this.onerror=null; this.outerHTML='<div class=\\'card-image\\' style=\\'background: linear-gradient(135deg, var(--primary-600), var(--primary-700)); display: flex; align-items: center; justify-content: center; font-size: 4rem;\\'>📱</div>';">` 
                     : `<div class="card-image" style="background: linear-gradient(135deg, var(--primary-600), var(--primary-700)); display: flex; align-items: center; justify-content: center; font-size: 4rem;">📱</div>`;
                 
                 return `
