@@ -871,6 +871,7 @@ function openPaper(url) {
 window.openPaper = openPaper;
 
 // Enhanced Load Channels
+// Enhanced Load Channels
 async function loadChannels() {
     const container = document.getElementById('channelsContainer');
     if (!container) return;
@@ -883,6 +884,17 @@ async function loadChannels() {
         });
         
         const data = await response.json();
+        
+        // DEBUG: Log the data
+        console.log('Channels data:', data);
+        data.forEach((channel, index) => {
+            console.log(`Channel ${index}:`, {
+                name: channel.name,
+                photoUrl: channel.photoUrl,
+                hasPhotoUrl: !!channel.photoUrl,
+                photoUrlLength: channel.photoUrl?.length
+            });
+        });
 
         if (response.ok && data.length > 0) {
             container.innerHTML = data.map(channel => `
@@ -903,8 +915,13 @@ async function loadChannels() {
             
             // Add error handlers after DOM is created
             container.querySelectorAll('.card-image[src]').forEach(img => {
+                console.log('Image element src:', img.src); // DEBUG
                 img.addEventListener('error', function() {
+                    console.error('Failed to load image:', this.src); // DEBUG
                     this.outerHTML = '<div class="card-image" style="background: linear-gradient(135deg, var(--primary-600), var(--primary-700)); display: flex; align-items: center; justify-content: center; font-size: 4rem;">📺</div>';
+                });
+                img.addEventListener('load', function() {
+                    console.log('Successfully loaded image:', this.src); // DEBUG
                 });
             });
         } else {

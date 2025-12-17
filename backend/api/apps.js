@@ -27,8 +27,19 @@ module.exports = async (req, res) => {
         jwt.verify(token, process.env.JWT_SECRET);
 
         if (req.method === 'GET') {
-            const apps = await App.find().sort({ createdAt: -1 });
-            return res.json(apps);
+            const apps = await App.find().sort({ createdAt: -1 }).lean();
+            
+            // Ensure photoUrl is always included (even if empty)
+            const appsWithPhotos = apps.map(app => ({
+                _id: app._id,
+                name: app.name,
+                features: app.features,
+                downloadUrl: app.downloadUrl,
+                photoUrl: app.photoUrl || '', // Ensure it's always a string
+                createdAt: app.createdAt
+            }));
+            
+            return res.json(appsWithPhotos);
         }
 
         res.status(405).json({ message: 'Method not allowed' });

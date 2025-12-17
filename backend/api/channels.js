@@ -27,8 +27,19 @@ module.exports = async (req, res) => {
         jwt.verify(token, process.env.JWT_SECRET);
 
         if (req.method === 'GET') {
-            const channels = await Channel.find().sort({ createdAt: -1 });
-            return res.json(channels);
+            const channels = await Channel.find().sort({ createdAt: -1 }).lean();
+            
+            // Ensure photoUrl is always included (even if empty)
+            const channelsWithPhotos = channels.map(channel => ({
+                _id: channel._id,
+                name: channel.name,
+                description: channel.description,
+                url: channel.url,
+                photoUrl: channel.photoUrl || '', // Ensure it's always a string
+                createdAt: channel.createdAt
+            }));
+            
+            return res.json(channelsWithPhotos);
         }
 
         res.status(405).json({ message: 'Method not allowed' });
