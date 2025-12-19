@@ -122,6 +122,18 @@
     {
       "src": "/api/quiz/user-answers-bulk",
       "dest": "/api/quiz.js"
+    },
+    {
+      "src": "/api/quiz/daily/start",
+      "dest": "/api/quiz.js"
+    },
+    {
+      "src": "/api/quiz/analytics",
+      "dest": "/api/quiz.js"
+    },
+    {
+      "src": "/api/quiz/user-answers-bulk",
+      "dest": "/api/quiz.js"
     }
   ]
 }

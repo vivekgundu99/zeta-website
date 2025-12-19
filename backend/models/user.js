@@ -15,6 +15,14 @@ const quizAnswerSchema = new mongoose.Schema({
         enum: ['daily', 'competitive'],
         required: true
     },
+    isCorrect: {
+        type: Boolean,
+        required: true
+    },
+    timeSpent: {
+        type: Number,
+        default: 0 // Time in seconds
+    },
     answeredAt: {
         type: Date,
         default: Date.now
@@ -47,6 +55,10 @@ const userSchema = new mongoose.Schema({
         required: true
     },
     quizAnswers: [quizAnswerSchema],
+    totalTimeConsumed: {
+        type: Number,
+        default: 0 // Total time in seconds
+    },
     createdAt: {
         type: Date,
         default: Date.now

@@ -1,5 +1,7 @@
 // Enhanced App.js - Professional Implementation
 
+let quizStartTime = 0;
+let quizTimerInterval = null;
 let authToken = null;
 let currentUser = null;
 let debounceTimer = null;
@@ -516,7 +518,6 @@ async function loadDailyQuiz() {
     const container = document.getElementById('dailyQuizContainer');
     if (!container) return;
     
-    // Show loading skeleton
     container.innerHTML = '<div class="skeleton" style="height: 200px; border-radius: 12px;"></div>';
     
     try {
@@ -527,11 +528,49 @@ async function loadDailyQuiz() {
         const data = await response.json();
 
         if (response.ok && data) {
-            const userAnswer = await getUserAnswer('daily', data._id);
-            container.innerHTML = renderQuizQuestion(data, userAnswer, 'daily');
-            
-            // Add event delegation for daily quiz option buttons
-            setupQuizEventDelegation(container);
+            if (data.hasAttempted) {
+                // Show the question with answer
+                container.innerHTML = `
+                    <div class="quiz-completed">
+                        <div class="completed-header">
+                            <span class="completed-icon">✓</span>
+                            <h4>Today's Quiz Completed!</h4>
+                        </div>
+                        <div class="quiz-question">
+                            <p class="question-text">${escapeHtml(data.question)}</p>
+                            <div class="answer-display">
+                                <div class="answer-option ${data.correctOption === 'A' ? 'correct' : ''}">
+                                    A. ${escapeHtml(data.optionA)}
+                                </div>
+                                <div class="answer-option ${data.correctOption === 'B' ? 'correct' : ''}">
+                                    B. ${escapeHtml(data.optionB)}
+                                </div>
+                                <div class="answer-option ${data.correctOption === 'C' ? 'correct' : ''}">
+                                    C. ${escapeHtml(data.optionC)}
+                                </div>
+                                <div class="answer-option ${data.correctOption === 'D' ? 'correct' : ''}">
+                                    D. ${escapeHtml(data.optionD)}
+                                </div>
+                            </div>
+                            <div class="correct-answer-badge">
+                                Correct Answer: ${data.correctOption}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                // Show "Attempt Quiz" button
+                container.innerHTML = `
+                    <div class="quiz-start-container">
+                        <div class="quiz-start-icon">📝</div>
+                        <h4>Daily Quiz Available!</h4>
+                        <p>Test your knowledge with today's question</p>
+                        <button class="btn-start-quiz" onclick="startDailyQuiz('${data._id}')">
+                            Start Quiz
+                        </button>
+                    </div>
+                `;
+            }
         } else {
             container.innerHTML = '<p class="empty-message">📝 No daily quiz available today</p>';
         }
@@ -1009,5 +1048,288 @@ function openAdminDashboard() {
         setupAdminListeners();
     }
 }
+// New function to start daily quiz
+window.startDailyQuiz = async function(quizId) {
+    try {
+        const response = await fetchWithTimeout(`${API_URL}/quiz/daily/start`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            openQuizWindow(data, 'daily');
+        } else {
+            showMessage('Failed to start quiz', 'error');
+        }
+    } catch (error) {
+        console.error('Error starting daily quiz:', error);
+        showMessage('Error starting quiz', 'error');
+    }
+};
 
+// New function to open quiz in window
+function openQuizWindow(question, type) {
+    // Reset timer
+    quizStartTime = Date.now();
+    
+    const container = type === 'daily' 
+        ? document.getElementById('dailyQuizContainer')
+        : document.getElementById('questionsContainer');
+    
+    if (!container) return;
+    
+    let html = '<div class="quiz-window">';
+    html += '<div class="quiz-timer">⏱️ <span id="quizTimer">0s</span></div>';
+    html += `<div class="quiz-question">
+                <p class="question-text">${escapeHtml(question.question)}</p>
+                <div class="options-container">
+                    <button class="option-btn" data-answer="A">A. ${escapeHtml(question.optionA)}</button>
+                    <button class="option-btn" data-answer="B">B. ${escapeHtml(question.optionB)}</button>
+                    <button class="option-btn" data-answer="C">C. ${escapeHtml(question.optionC)}</button>
+                    <button class="option-btn" data-answer="D">D. ${escapeHtml(question.optionD)}</button>
+                </div>
+            </div>`;
+    html += '</div>';
+    
+    container.innerHTML = html;
+    
+    // Start timer
+    startQuizTimer();
+    
+    // Add click handlers
+    container.querySelectorAll('.option-btn').forEach(btn => {
+        btn.addEventListener('click', async function() {
+            const answer = this.getAttribute('data-answer');
+            const timeSpent = Math.floor((Date.now() - quizStartTime) / 1000);
+            
+            // Stop timer
+            stopQuizTimer();
+            
+            // Disable all buttons
+            container.querySelectorAll('.option-btn').forEach(b => b.disabled = true);
+            
+            // Submit answer
+            await submitQuizAnswer(question._id, answer, type, timeSpent, question.correctOption);
+        });
+    });
+}
+
+// Timer functions
+function startQuizTimer() {
+    stopQuizTimer(); // Clear any existing timer
+    
+    quizTimerInterval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - quizStartTime) / 1000);
+        const timerEl = document.getElementById('quizTimer');
+        if (timerEl) {
+            timerEl.textContent = formatTime(elapsed);
+        }
+    }, 1000);
+}
+
+function stopQuizTimer() {
+    if (quizTimerInterval) {
+        clearInterval(quizTimerInterval);
+        quizTimerInterval = null;
+    }
+}
+
+function formatTime(seconds) {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+}
+
+// New submit function with time tracking
+async function submitQuizAnswer(questionId, answer, type, timeSpent, correctOption) {
+    try {
+        showMessage('Submitting answer...', 'info');
+        
+        const response = await fetchWithTimeout(`${API_URL}/quiz/answer`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify({ 
+                questionId, 
+                answer, 
+                type, 
+                timeSpent,
+                correctOption 
+            })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            const isCorrect = data.isCorrect;
+            showMessage(
+                isCorrect ? '✓ Correct Answer!' : '✗ Wrong Answer!', 
+                isCorrect ? 'success' : 'error'
+            );
+            
+            // Show result with correct answer
+            setTimeout(() => {
+                showQuizResult(questionId, answer, correctOption, type);
+                
+                // Reload analytics
+                loadAnalytics();
+            }, 500);
+        } else {
+            showMessage(data.message || 'Failed to submit answer', 'error');
+        }
+    } catch (error) {
+        console.error('Error submitting answer:', error);
+        showMessage('Error submitting answer', 'error');
+    }
+}
+
+// Show quiz result
+function showQuizResult(questionId, userAnswer, correctAnswer, type) {
+    if (type === 'daily') {
+        // Reload daily quiz to show completed state
+        loadDailyQuiz();
+    } else {
+        // For competitive quiz, show result in modal
+        const container = document.getElementById('questionsContainer');
+        if (!container) return;
+        
+        const isCorrect = userAnswer === correctAnswer;
+        
+        container.innerHTML = `
+            <div class="quiz-result-display ${isCorrect ? 'correct' : 'wrong'}">
+                <div class="result-icon">${isCorrect ? '✓' : '✗'}</div>
+                <h3>${isCorrect ? 'Correct!' : 'Incorrect'}</h3>
+                <p>Your answer: <strong>${userAnswer}</strong></p>
+                <p>Correct answer: <strong>${correctAnswer}</strong></p>
+                <div class="result-actions">
+                    <button class="btn-primary" onclick="backToTopics()">Back to Topics</button>
+                </div>
+            </div>
+        `;
+    }
+}
+
+// Update loadTopicQuestions to use new window approach
+window.loadTopicQuestions = async function(topicId, topicName) {
+    const container = document.getElementById('questionsContainer');
+    const topicsContainer = document.getElementById('topicsContainer');
+    
+    if (!container || !topicsContainer) return;
+    
+    currentTopicId = topicId;
+    currentTopicName = topicName;
+    
+    container.innerHTML = '<div class="skeleton" style="height: 300px; border-radius: 12px;"></div>';
+    topicsContainer.style.display = 'none';
+    container.style.display = 'block';
+    
+    try {
+        const response = await fetchWithTimeout(`${API_URL}/quiz/topic/${topicId}`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        
+        const data = await response.json();
+
+        if (response.ok && data.questions && data.questions.length > 0) {
+            let html = `<button class="back-to-topics" onclick="backToTopics()">← Back to Topics</button>`;
+            html += `<h4 style="margin-bottom: 20px; color: var(--primary-600); font-size: 1.5rem;">${escapeHtml(topicName)}</h4>`;
+            html += '<div class="competitive-questions-list">';
+            
+            for (let i = 0; i < data.questions.length; i++) {
+                const question = data.questions[i];
+                html += `
+                    <div class="competitive-question-card">
+                        <div class="question-number">Question ${i + 1}</div>
+                        <button class="btn-start-question" onclick='startCompetitiveQuestion(${JSON.stringify(question).replace(/'/g, "&apos;")})'>
+                            Attempt Question
+                        </button>
+                    </div>
+                `;
+            }
+            
+            html += '</div>';
+            container.innerHTML = html;
+        } else {
+            container.innerHTML = `
+                <button class="back-to-topics" onclick="backToTopics()">← Back to Topics</button>
+                <p class="empty-message">No questions available in this topic</p>
+            `;
+        }
+    } catch (error) {
+        console.error('Error loading topic questions:', error);
+        container.innerHTML = `
+            <button class="back-to-topics" onclick="backToTopics()">← Back to Topics</button>
+            <p class="empty-message error">⚠️ Failed to load questions</p>
+        `;
+    }
+};
+
+// Start competitive question
+window.startCompetitiveQuestion = function(question) {
+    openQuizWindow(question, 'competitive');
+};
+
+// New analytics loading function
+async function loadAnalytics() {
+    try {
+        const response = await fetchWithTimeout(`${API_URL}/quiz/analytics`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            // Update analytics display
+            document.getElementById('totalTime').textContent = formatTime(data.totalTimeConsumed);
+            document.getElementById('totalQuestions').textContent = data.totalQuestionsAnswered;
+            document.getElementById('accuracy').textContent = `${data.accuracy}%`;
+            document.getElementById('dailyAttempts').textContent = data.dailyQuizAttempts;
+            document.getElementById('competitiveAttempts').textContent = data.competitiveQuizAttempts;
+            document.getElementById('avgTime').textContent = formatTime(data.averageTimePerQuestion);
+            document.getElementById('correctAnswers').textContent = data.correctAnswers;
+            document.getElementById('wrongAnswers').textContent = data.wrongAnswers;
+            
+            // Update accuracy progress bar
+            const accuracyBar = document.getElementById('accuracyBar');
+            if (accuracyBar) {
+                accuracyBar.style.width = `${data.accuracy}%`;
+                
+                // Color based on accuracy
+                if (data.accuracy >= 80) {
+                    accuracyBar.style.background = 'var(--success-500)';
+                } else if (data.accuracy >= 60) {
+                    accuracyBar.style.background = 'var(--warning-500)';
+                } else {
+                    accuracyBar.style.background = 'var(--error-500)';
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Error loading analytics:', error);
+    }
+}
+
+// Update the loadDataWithProgress function to include analytics
+async function loadDataWithProgress() {
+    const sections = [
+        { fn: loadDailyQuiz, name: 'Daily Quiz' },
+        { fn: loadCompetitiveQuiz, name: 'Topics' },
+        { fn: loadPapers, name: 'Papers' },
+        { fn: loadChannels, name: 'Channels' },
+        { fn: loadApps, name: 'Apps' },
+        { fn: loadAnalytics, name: 'Analytics' }
+    ];
+    
+    for (const section of sections) {
+        try {
+            await section.fn();
+        } catch (error) {
+            console.error(`Error loading ${section.name}:`, error);
+            showMessage(`Failed to load ${section.name}`, 'error');
+        }
+    }
+}
 console.log('✨ Zeta App System Initialized');

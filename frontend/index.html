@@ -18,6 +18,7 @@
                 <a href="#papers" class="nav-link">Research Papers</a>
                 <a href="#youtube" class="nav-link">YouTube Channels</a>
                 <a href="#apps" class="nav-link">Apps</a>
+                <a href="#analytics" class="nav-link">Analytics</a>
             </nav>
             <div class="header-right">
                 <button id="adminBtn" class="header-btn admin-btn" style="display: none;">Admin</button>
@@ -234,6 +235,64 @@
             <div id="appsContainer" class="apps-grid"></div>
         </section>
     </main>
+    <!-- Add this section after the Apps section and before the footer -->
+
+        <!-- Analytics Section -->
+        <section id="analytics" class="content-section">
+            <h2 class="section-title">📊 Your Analytics</h2>
+            <div class="analytics-container">
+                <div class="analytics-card primary-card">
+                    <div class="analytics-icon">⏱️</div>
+                    <div class="analytics-value" id="totalTime">0s</div>
+                    <div class="analytics-label">Total Time Consumed</div>
+                </div>
+                
+                <div class="analytics-card success-card">
+                    <div class="analytics-icon">✅</div>
+                    <div class="analytics-value" id="totalQuestions">0</div>
+                    <div class="analytics-label">Questions Answered</div>
+                </div>
+                
+                <div class="analytics-card accuracy-card">
+                    <div class="analytics-icon">🎯</div>
+                    <div class="analytics-value" id="accuracy">0%</div>
+                    <div class="analytics-label">Accuracy</div>
+                    <div class="analytics-progress">
+                        <div class="progress-bar" id="accuracyBar"></div>
+                    </div>
+                </div>
+                
+                <div class="analytics-card info-card">
+                    <div class="analytics-icon">📝</div>
+                    <div class="analytics-value" id="dailyAttempts">0</div>
+                    <div class="analytics-label">Daily Quiz Attempts</div>
+                </div>
+                
+                <div class="analytics-card warning-card">
+                    <div class="analytics-icon">🏆</div>
+                    <div class="analytics-value" id="competitiveAttempts">0</div>
+                    <div class="analytics-label">Competitive Quiz Attempts</div>
+                </div>
+                
+                <div class="analytics-card secondary-card">
+                    <div class="analytics-icon">⚡</div>
+                    <div class="analytics-value" id="avgTime">0s</div>
+                    <div class="analytics-label">Avg. Time per Question</div>
+                </div>
+                
+                <div class="analytics-card correct-card">
+                    <div class="analytics-icon">✓</div>
+                    <div class="analytics-value" id="correctAnswers">0</div>
+                    <div class="analytics-label">Correct Answers</div>
+                </div>
+                
+                <div class="analytics-card wrong-card">
+                    <div class="analytics-icon">✗</div>
+                    <div class="analytics-value" id="wrongAnswers">0</div>
+                    <div class="analytics-label">Wrong Answers</div>
+                </div>
+            </div>
+        </section>
 
     <!-- Footer -->
     <footer class="main-footer">
