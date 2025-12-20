@@ -724,7 +724,18 @@ body {
 .quiz-content {
     min-height: 250px;
 }
+.quiz-content > div {
+    width: 100%;
+}
 
+.questions-container {
+    width: 100%;
+}
+
+.questions-container > * {
+    display: block;
+    width: 100%;
+}
 .quiz-question {
     margin-bottom: var(--space-8);
     padding: var(--space-6);
