@@ -1015,7 +1015,7 @@ function showReviewOption(topicId, topicName) {
             <div class="review-complete-icon">✅</div>
             <h3>All Questions Completed!</h3>
             <p>You've answered all ${topicQuestions.length} questions in this topic.</p>
-            <button class="btn-primary" id="reviewAnswersBtn" onclick="showReviewAnswers('${topicId}', '${escapeHtml(topicName)}')">
+            <button class="btn-primary" id="reviewAnswersBtn" >
                 📝 Review Your Answers
             </button>
         </div>
