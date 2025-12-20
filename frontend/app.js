@@ -1010,16 +1010,27 @@ function showReviewOption(topicId, topicName) {
     const container = document.getElementById('questionsContainer');
     
     container.innerHTML = `
-        <div class="review-option-screen">
+        <div class="review-option-screen" style="display: block !important;">
             <button class="back-to-topics" onclick="backToTopics()">← Back to Topics</button>
             <div class="review-complete-icon">✅</div>
             <h3>All Questions Completed!</h3>
             <p>You've answered all ${topicQuestions.length} questions in this topic.</p>
-            <button class="btn-primary" onclick="showReviewAnswers('${topicId}', '${escapeHtml(topicName)}')">
+            <button class="btn-primary" id="reviewAnswersBtn" onclick="showReviewAnswers('${topicId}', '${escapeHtml(topicName)}')">
                 📝 Review Your Answers
             </button>
         </div>
     `;
+    
+    // Add event listener instead of onclick
+    setTimeout(() => {
+        const btn = document.getElementById('reviewAnswersBtn');
+        if (btn) {
+            btn.addEventListener('click', () => {
+                console.log('Review button clicked');
+                showReviewAnswers(topicId, topicName);
+            });
+        }
+    }, 100);
 }
 
 window.showReviewAnswers = async function(topicId, topicName) {
@@ -1038,10 +1049,16 @@ window.showReviewAnswers = async function(topicId, topicName) {
 
 function displayReviewQuestion(questionsWithAnswers) {
     const container = document.getElementById('questionsContainer');
+    
+    // Force display first
+    container.style.display = 'block';
+    container.style.visibility = 'visible';
+    container.style.opacity = '1';
+    
     const current = questionsWithAnswers[currentQuestionIndex];
     const totalQuestions = questionsWithAnswers.length;
     
-    let html = '<div class="review-container">';
+    let html = '<div class="review-container" style="display: block !important; visibility: visible !important;">';
     html += '<div class="review-header">';
     html += `<button class="back-to-topics" onclick="backToTopics()">← Back to Topics</button>`;
     html += '<h4>Review Your Answers</h4>';
@@ -1090,6 +1107,16 @@ function displayReviewQuestion(questionsWithAnswers) {
     html += '</div>'; // close review-container
     
     container.innerHTML = html;
+    
+    // Force display after rendering
+    setTimeout(() => {
+        const reviewContainer = container.querySelector('.review-container');
+        if (reviewContainer) {
+            reviewContainer.style.display = 'block';
+            reviewContainer.style.visibility = 'visible';
+        }
+        console.log('✅ Review question displayed:', current.index);
+    }, 10);
 }
 
 window.navigateReview = function(direction) {

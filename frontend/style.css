@@ -727,15 +727,6 @@ body {
 .quiz-content > div {
     width: 100%;
 }
-
-.questions-container {
-    width: 100%;
-}
-
-.questions-container > * {
-    display: block;
-    width: 100%;
-}
 .quiz-question {
     margin-bottom: var(--space-8);
     padding: var(--space-6);
@@ -2753,5 +2744,69 @@ transition-duration: 0.01ms !important;
 .quiz-complete,
 .answer-reveal {
     display: block !important;
+    visibility: visible !important;
+}
+/* ========================================
+   REVIEW DISPLAY FIX - CRITICAL
+   ======================================== */
+
+/* Ensure questions container is always visible */
+#questionsContainer {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* Review Option Screen */
+.review-option-screen {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    position: relative !important;
+    z-index: 1 !important;
+}
+
+/* Review Container */
+.review-container {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    position: relative !important;
+    z-index: 1 !important;
+}
+
+/* All child elements visible */
+.review-header,
+.review-progress,
+.review-question,
+.review-navigation {
+    display: block !important;
+    visibility: visible !important;
+}
+
+.review-header {
+    display: flex !important;
+}
+
+.review-options-container {
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+.review-navigation {
+    display: flex !important;
+}
+
+/* Review Options */
+.review-option {
+    display: flex !important;
+    visibility: visible !important;
+}
+
+/* Ensure no parent is hiding these */
+#competitiveQuizContainer,
+#competitiveQuizContainer > *,
+.quiz-content,
+.quiz-content > * {
     visibility: visible !important;
 }
