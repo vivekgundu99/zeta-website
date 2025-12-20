@@ -5,6 +5,10 @@ let quizTimerInterval = null;
 let authToken = null;
 let currentUser = null;
 let debounceTimer = null;
+let currentTopicId = null;
+let currentTopicName = null;
+let currentQuestionIndex = 0;
+let topicQuestions = [];
 
 // Constants
 const DEBOUNCE_DELAY = 300;
@@ -14,16 +18,14 @@ const API_TIMEOUT = 10000;
 // Convert Google Drive view links to direct image URLs
 function convertGoogleDriveUrl(url) {
     if (!url) return '';
-    
-    // Check if it's a Google Drive link
     const driveMatch = url.match(/drive\.google\.com\/file\/d\/([^\/]+)/);
     if (driveMatch && driveMatch[1]) {
         const fileId = driveMatch[1];
         return `https://drive.google.com/uc?export=view&id=${fileId}`;
     }
-    
-    return url; // Return original URL if not a Drive link
+    return url;
 }
+
 // Initialize with error handling
 document.addEventListener('DOMContentLoaded', () => {
     try {
@@ -100,8 +102,6 @@ if (themeToggle) {
         const currentTheme = document.body.classList.contains('light-theme') ? 'light' : 'dark';
         const newTheme = currentTheme === 'light' ? 'dark' : 'light';
         applyTheme(newTheme);
-        
-        // Add ripple effect
         createRipple(themeToggle, event);
     });
 }
@@ -129,20 +129,17 @@ function createRipple(element, event) {
     
     element.style.position = 'relative';
     element.appendChild(ripple);
-    
     setTimeout(() => ripple.remove(), 600);
 }
 
-// Enhanced Welcome Popup with accessibility
-// Enhanced Welcome Popup with accessibility
+// Enhanced Welcome Popup
 function showWelcomePopup() {
     const popup = document.getElementById('welcomePopup');
     if (popup) {
         popup.style.display = 'block';
-        popup.removeAttribute('aria-hidden'); // Changed: remove instead of setting to false
+        popup.removeAttribute('aria-hidden');
         document.body.style.overflow = 'hidden';
         
-        // Focus trap
         const focusableElements = popup.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
         if (focusableElements.length > 0) {
             focusableElements[0].focus();
@@ -150,12 +147,11 @@ function showWelcomePopup() {
     }
 }
 
-// Enhanced Message System with auto-dismiss
+// Enhanced Message System
 function showMessage(message, type = 'success') {
     const popup = document.getElementById('messagePopup');
     if (!popup) return;
     
-    // Clear existing timeout
     if (popup.timeoutId) {
         clearTimeout(popup.timeoutId);
     }
@@ -165,12 +161,10 @@ function showMessage(message, type = 'success') {
     popup.setAttribute('role', 'alert');
     popup.setAttribute('aria-live', 'polite');
     
-    // Auto-dismiss
     popup.timeoutId = setTimeout(() => {
         popup.classList.remove('show');
     }, MESSAGE_DURATION);
     
-    // Click to dismiss
     popup.onclick = () => {
         popup.classList.remove('show');
         clearTimeout(popup.timeoutId);
@@ -179,32 +173,26 @@ function showMessage(message, type = 'success') {
 
 // Enhanced Event Listeners Setup
 function setupEventListeners() {
-    // Continue Button
-        const continueBtn = document.getElementById('continueBtn');
-        if (continueBtn) {
-            continueBtn.addEventListener('click', () => {
-                const popup = document.getElementById('welcomePopup');
-                if (popup) {
-                    // Remove focus from button BEFORE hiding
-                    continueBtn.blur();
-                    
-                    // Use setTimeout to ensure blur happens first
-                    setTimeout(() => {
-                        popup.style.display = 'none';
-                        popup.setAttribute('aria-hidden', 'true');
-                        document.body.style.overflow = '';
-                        
-                        // Focus on main content
-                        const mainContent = document.querySelector('.main-content');
-                        if (mainContent) {
-                            mainContent.setAttribute('tabindex', '-1');
-                            mainContent.focus();
-                            mainContent.removeAttribute('tabindex');
-                        }
-                    }, 0);
-                }
-            });
-        }
+    const continueBtn = document.getElementById('continueBtn');
+    if (continueBtn) {
+        continueBtn.addEventListener('click', () => {
+            const popup = document.getElementById('welcomePopup');
+            if (popup) {
+                continueBtn.blur();
+                setTimeout(() => {
+                    popup.style.display = 'none';
+                    popup.setAttribute('aria-hidden', 'true');
+                    document.body.style.overflow = '';
+                    const mainContent = document.querySelector('.main-content');
+                    if (mainContent) {
+                        mainContent.setAttribute('tabindex', '-1');
+                        mainContent.focus();
+                        mainContent.removeAttribute('tabindex');
+                    }
+                }, 0);
+            }
+        });
+    }
 
     // Account Button
     const accountBtn = document.getElementById('accountBtn');
@@ -296,7 +284,6 @@ function debounceSearch(query) {
 // Keyboard Navigation Setup
 function setupKeyboardNavigation() {
     document.addEventListener('keydown', (e) => {
-        // Escape key closes modals
         if (e.key === 'Escape') {
             const openModals = document.querySelectorAll('.modal[style*="display: block"]');
             openModals.forEach(modal => closeModal(modal.id));
@@ -309,10 +296,9 @@ function openModal(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) {
         modal.style.display = 'block';
-        modal.removeAttribute('aria-hidden'); // Changed: remove instead of setting to false
+        modal.removeAttribute('aria-hidden');
         document.body.style.overflow = 'hidden';
         
-        // Focus first focusable element
         const focusable = modal.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
         if (focusable) {
             setTimeout(() => focusable.focus(), 100);
@@ -323,13 +309,11 @@ function openModal(modalId) {
 function closeModal(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) {
-        // Remove focus from any active element inside modal
         const activeElement = document.activeElement;
         if (modal.contains(activeElement)) {
             activeElement.blur();
         }
         
-        // Use setTimeout to ensure blur happens first
         setTimeout(() => {
             modal.style.display = 'none';
             modal.setAttribute('aria-hidden', 'true');
@@ -341,7 +325,6 @@ function closeModal(modalId) {
 // Enhanced Logout
 function handleLogout() {
     if (confirm('Are you sure you want to logout?')) {
-        // Show loading state
         showMessage('Logging out...', 'info');
         
         setTimeout(() => {
@@ -352,7 +335,7 @@ function handleLogout() {
     }
 }
 
-// Enhanced Update Password with validation
+// Enhanced Update Password
 async function updatePassword(e) {
     e.preventDefault();
     
@@ -360,12 +343,10 @@ async function updatePassword(e) {
     const newPassword = document.getElementById('newPasswordUpdate').value.trim();
     const confirmPassword = document.getElementById('confirmPasswordUpdate').value.trim();
     
-    // Client-side validation
     if (!validatePassword(newPassword, confirmPassword)) {
         return;
     }
     
-    // Show loading state
     const submitBtn = e.target.querySelector('button[type="submit"]');
     const originalText = submitBtn.textContent;
     submitBtn.disabled = true;
@@ -479,7 +460,8 @@ async function loadDataWithProgress() {
         { fn: loadCompetitiveQuiz, name: 'Topics' },
         { fn: loadPapers, name: 'Papers' },
         { fn: loadChannels, name: 'Channels' },
-        { fn: loadApps, name: 'Apps' }
+        { fn: loadApps, name: 'Apps' },
+        { fn: loadAnalytics, name: 'Analytics' }
     ];
     
     for (const section of sections) {
@@ -513,7 +495,7 @@ async function fetchWithTimeout(url, options = {}, timeout = API_TIMEOUT) {
     }
 }
 
-// Enhanced Load Daily Quiz with error handling
+// Enhanced Load Daily Quiz
 async function loadDailyQuiz() {
     const container = document.getElementById('dailyQuizContainer');
     if (!container) return;
@@ -529,7 +511,6 @@ async function loadDailyQuiz() {
 
         if (response.ok && data) {
             if (data.hasAttempted) {
-                // Show the question with answer
                 container.innerHTML = `
                     <div class="quiz-completed">
                         <div class="completed-header">
@@ -559,7 +540,6 @@ async function loadDailyQuiz() {
                     </div>
                 `;
             } else {
-                // Show "Attempt Quiz" button
                 container.innerHTML = `
                     <div class="quiz-start-container">
                         <div class="quiz-start-icon">📝</div>
@@ -577,6 +557,231 @@ async function loadDailyQuiz() {
     } catch (error) {
         console.error('Error loading daily quiz:', error);
         container.innerHTML = '<p class="empty-message error">⚠️ Failed to load daily quiz</p>';
+    }
+}
+
+// Start Daily Quiz
+window.startDailyQuiz = async function(quizId) {
+    try {
+        const response = await fetchWithTimeout(`${API_URL}/quiz/daily/start`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            openQuizWindow(data, 'daily');
+        } else {
+            showMessage('Failed to start quiz', 'error');
+        }
+    } catch (error) {
+        console.error('Error starting daily quiz:', error);
+        showMessage('Error starting quiz', 'error');
+    }
+};
+
+// Open Quiz Window
+function openQuizWindow(question, type) {
+    quizStartTime = Date.now();
+    
+    const container = type === 'daily' 
+        ? document.getElementById('dailyQuizContainer')
+        : document.getElementById('questionsContainer');
+    
+    if (!container) return;
+    
+    let html = '<div class="quiz-window">';
+    html += '<div class="quiz-timer">⏱️ <span id="quizTimer">0s</span></div>';
+    html += `<div class="quiz-question">
+                <p class="question-text">${escapeHtml(question.question)}</p>
+                <div class="options-container">
+                    <button class="option-btn" data-answer="A">A. ${escapeHtml(question.optionA)}</button>
+                    <button class="option-btn" data-answer="B">B. ${escapeHtml(question.optionB)}</button>
+                    <button class="option-btn" data-answer="C">C. ${escapeHtml(question.optionC)}</button>
+                    <button class="option-btn" data-answer="D">D. ${escapeHtml(question.optionD)}</button>
+                </div>
+            </div>`;
+    html += '</div>';
+    
+    container.innerHTML = html;
+    
+    startQuizTimer();
+    
+    container.querySelectorAll('.option-btn').forEach(btn => {
+        btn.addEventListener('click', async function() {
+            const answer = this.getAttribute('data-answer');
+            const timeSpent = Math.floor((Date.now() - quizStartTime) / 1000);
+            
+            container.querySelectorAll('.option-btn').forEach(b => b.disabled = true);
+            
+            await submitQuizAnswer(question._id, answer, type, timeSpent, question.correctOption);
+        });
+    });
+}
+
+// Timer functions
+function startQuizTimer() {
+    stopQuizTimer();
+    
+    quizTimerInterval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - quizStartTime) / 1000);
+        const timerEl = document.getElementById('quizTimer');
+        if (timerEl) {
+            timerEl.textContent = formatTime(elapsed);
+        }
+    }, 1000);
+}
+
+function stopQuizTimer() {
+    if (quizTimerInterval) {
+        clearInterval(quizTimerInterval);
+        quizTimerInterval = null;
+    }
+}
+
+function formatTime(seconds) {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+}
+
+// Submit Quiz Answer
+async function submitQuizAnswer(questionId, answer, type, timeSpent, correctOption) {
+    try {
+        showMessage('Submitting answer...', 'info');
+        
+        const response = await fetchWithTimeout(`${API_URL}/quiz/answer`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify({ 
+                questionId, 
+                answer, 
+                type, 
+                timeSpent,
+                correctOption 
+            })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            const isCorrect = data.isCorrect;
+            showMessage(
+                isCorrect ? '✓ Correct Answer!' : '✗ Wrong Answer!', 
+                isCorrect ? 'success' : 'error'
+            );
+            
+            setTimeout(() => {
+                if (type === 'daily') {
+                    stopQuizTimer();
+                    loadDailyQuiz();
+                } else {
+                    // For competitive quiz, load next question
+                    loadNextCompetitiveQuestion(correctOption);
+                }
+                loadAnalytics();
+            }, 1500);
+        } else {
+            showMessage(data.message || 'Failed to submit answer', 'error');
+        }
+    } catch (error) {
+        console.error('Error submitting answer:', error);
+        showMessage('Error submitting answer', 'error');
+    }
+}
+
+// Load Next Competitive Question
+async function loadNextCompetitiveQuestion(lastCorrectOption) {
+    const container = document.getElementById('questionsContainer');
+    if (!container) return;
+    
+    // Show previous answer briefly
+    const currentQuestion = topicQuestions[currentQuestionIndex];
+    container.innerHTML = `
+        <div class="answer-reveal">
+            <h4>Question ${currentQuestionIndex + 1}</h4>
+            <p class="question-text">${escapeHtml(currentQuestion.question)}</p>
+            <div class="correct-answer-display">
+                <span class="correct-icon">✓</span>
+                Correct Answer: <strong>${lastCorrectOption}</strong>
+            </div>
+        </div>
+    `;
+    
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // Move to next question
+    currentQuestionIndex++;
+    
+    if (currentQuestionIndex < topicQuestions.length) {
+        displayCurrentCompetitiveQuestion();
+    } else {
+        // All questions completed
+        stopQuizTimer();
+        const totalTime = Math.floor((Date.now() - quizStartTime) / 1000);
+        container.innerHTML = `
+            <div class="quiz-complete">
+                <div class="complete-icon">🎉</div>
+                <h3>Topic Completed!</h3>
+                <p>You've answered all ${topicQuestions.length} questions</p>
+                <p>Total Time: ${formatTime(totalTime)}</p>
+                <button class="btn-primary" onclick="backToTopics()">Back to Topics</button>
+            </div>
+        `;
+    }
+}
+
+// Display Current Competitive Question
+function displayCurrentCompetitiveQuestion() {
+    const container = document.getElementById('questionsContainer');
+    if (!container || currentQuestionIndex >= topicQuestions.length) return;
+    
+    const question = topicQuestions[currentQuestionIndex];
+    
+    let html = '<div class="quiz-window">';
+    html += '<div class="quiz-header">';
+    html += `<button class="back-to-topics" onclick="confirmBackToTopics()">← Back to Topics</button>`;
+    html += '<div class="quiz-timer">⏱️ <span id="quizTimer">0s</span></div>';
+    html += '</div>';
+    html += `<div class="question-progress">Question ${currentQuestionIndex + 1} of ${topicQuestions.length}</div>`;
+    html += `<div class="quiz-question">
+                <p class="question-text">${escapeHtml(question.question)}</p>
+                <div class="options-container">
+                    <button class="option-btn" data-answer="A">A. ${escapeHtml(question.optionA)}</button>
+                    <button class="option-btn" data-answer="B">B. ${escapeHtml(question.optionB)}</button>
+                    <button class="option-btn" data-answer="C">C. ${escapeHtml(question.optionC)}</button>
+                    <button class="option-btn" data-answer="D">D. ${escapeHtml(question.optionD)}</button>
+                </div>
+            </div>`;
+    html += '</div>';
+    
+    container.innerHTML = html;
+    
+    // Continue timer
+    if (!quizTimerInterval) {
+        startQuizTimer();
+    }
+    
+    container.querySelectorAll('.option-btn').forEach(btn => {
+        btn.addEventListener('click', async function() {
+            const answer = this.getAttribute('data-answer');
+            const timeSpent = Math.floor((Date.now() - quizStartTime) / 1000);
+            
+            container.querySelectorAll('.option-btn').forEach(b => b.disabled = true);
+            
+            await submitQuizAnswer(question._id, answer, 'competitive', timeSpent, question.correctOption);
+        });
+    });
+}
+
+// Confirm Back to Topics
+function confirmBackToTopics() {
+    if (confirm('Are you sure you want to go back? Your progress will be saved but the timer will reset.')) {
+        stopQuizTimer();
+        backToTopics();
     }
 }
 
@@ -609,12 +814,8 @@ async function loadCompetitiveQuiz() {
     }
 }
 
-// Store current topic for reloading
-let currentTopicId = null;
-let currentTopicName = null;
-
 // Load Topic Questions
-async function loadTopicQuestions(topicId, topicName) {
+window.loadTopicQuestions = async function(topicId, topicName) {
     const container = document.getElementById('questionsContainer');
     const topicsContainer = document.getElementById('topicsContainer');
     
@@ -622,6 +823,7 @@ async function loadTopicQuestions(topicId, topicName) {
     
     currentTopicId = topicId;
     currentTopicName = topicName;
+    currentQuestionIndex = 0;
     
     container.innerHTML = '<div class="skeleton" style="height: 300px; border-radius: 12px;"></div>';
     topicsContainer.style.display = 'none';
@@ -635,8 +837,9 @@ async function loadTopicQuestions(topicId, topicName) {
         const data = await response.json();
 
         if (response.ok && data.questions && data.questions.length > 0) {
-            // Fetch all user answers in ONE request
-            const questionIds = data.questions.map(q => q._id);
+            topicQuestions = data.questions;
+            
+            // Check for user's last attempted question
             const answersResponse = await fetchWithTimeout(`${API_URL}/quiz/user-answers-bulk`, {
                 method: 'POST',
                 headers: {
@@ -644,31 +847,22 @@ async function loadTopicQuestions(topicId, topicName) {
                     'Authorization': `Bearer ${authToken}`
                 },
                 body: JSON.stringify({
-                    questionIds,
+                    questionIds: topicQuestions.map(q => q._id),
                     type: 'competitive'
                 })
             });
             
             const { answers } = await answersResponse.json();
             
-            // Count attempted questions
-            const attemptedCount = Object.keys(answers).length;
-            
-            let html = `<button class="back-to-topics" onclick="backToTopics()" aria-label="Back to topics">← Back to Topics</button>`;
-            html += `<h4 style="margin-bottom: 20px; color: var(--primary-600); font-size: 1.5rem;">${escapeHtml(topicName)}</h4>`;
-            html += `<div style="margin-bottom: 20px; padding: 12px; background: var(--primary-50); border-radius: 8px; text-align: center; font-weight: 600; color: var(--primary-600);">
-                        Questions Attempted: ${attemptedCount}/${data.questions.length}
-                     </div>`;
-            
-            let questionNumber = 1;
-            for (const question of data.questions) {
-                const userAnswer = answers[question._id] || null;
-                html += renderQuizQuestion(question, userAnswer, 'competitive', questionNumber);
-                questionNumber++;
+            // Find first unanswered question
+            currentQuestionIndex = topicQuestions.findIndex(q => !answers[q._id]);
+            if (currentQuestionIndex === -1) {
+                currentQuestionIndex = 0; // Start from beginning if all answered
             }
             
-            container.innerHTML = html;
-            setupQuizEventDelegation(container);
+            // Start timer
+            quizStartTime = Date.now();
+            displayCurrentCompetitiveQuestion();
         } else {
             container.innerHTML = `
                 <button class="back-to-topics" onclick="backToTopics()">← Back to Topics</button>
@@ -682,154 +876,22 @@ async function loadTopicQuestions(topicId, topicName) {
             <p class="empty-message error">⚠️ Failed to load questions</p>
         `;
     }
-}
-// Make functions globally accessible
-window.loadTopicQuestions = loadTopicQuestions;
+};
 
 function backToTopics() {
     const topicsContainer = document.getElementById('topicsContainer');
     const questionsContainer = document.getElementById('questionsContainer');
     
-    // Clear current topic info
     currentTopicId = null;
     currentTopicName = null;
+    currentQuestionIndex = 0;
+    topicQuestions = [];
     
     if (topicsContainer) topicsContainer.style.display = 'grid';
     if (questionsContainer) questionsContainer.style.display = 'none';
 }
 
 window.backToTopics = backToTopics;
-
-// Enhanced Quiz Question Renderer
-function renderQuizQuestion(question, userAnswer, type, questionNumber = null) {
-    const answered = userAnswer !== null;
-    const isCorrect = answered && userAnswer === question.correctOption;
-    
-    let html = '<div class="quiz-question">';
-    if (questionNumber) {
-        html += `<div style="font-weight: 700; color: var(--primary-600); margin-bottom: 8px; font-size: 0.875rem;">Question ${questionNumber}</div>`;
-    }
-    html += `<p class="question-text">${escapeHtml(question.question)}</p>`;
-    html += '<div class="options-container">';
-    
-    ['optionA', 'optionB', 'optionC', 'optionD'].forEach((opt, index) => {
-        const optionLetter = String.fromCharCode(65 + index);
-        const isUserAnswer = answered && userAnswer === optionLetter;
-        const isCorrectOption = question.correctOption === optionLetter;
-        
-        let className = 'option-btn';
-        if (answered) {
-            if (isCorrectOption) className += ' correct';
-            else if (isUserAnswer) className += ' wrong';
-        }
-        
-        // Use data attributes and event delegation instead of onclick
-        html += `<button class="${className}" 
-                         data-question-id="${question._id}"
-                         data-answer="${optionLetter}"
-                         data-type="${type}"
-                         ${answered ? 'disabled' : ''}
-                         aria-label="Option ${optionLetter}">
-                    ${optionLetter}. ${escapeHtml(question[opt])}
-                 </button>`;
-    });
-    
-    html += '</div>';
-    
-    if (answered) {
-        const icon = isCorrect ? '✓' : '✗';
-        const text = isCorrect ? 'Correct!' : 'Incorrect';
-        html += `<div class="quiz-result ${isCorrect ? 'correct' : 'wrong'}" role="alert">
-                    ${icon} ${text}
-                 </div>`;
-    }
-    
-    html += '</div>';
-    return html;
-}
-
-// Setup Event Delegation for Quiz Buttons
-function setupQuizEventDelegation(container) {
-    // Remove any existing listeners to prevent duplicates
-    const oldContainer = container.cloneNode(true);
-    container.parentNode.replaceChild(oldContainer, container);
-    
-    // Add event listener to the container
-    oldContainer.addEventListener('click', async (e) => {
-        const button = e.target.closest('.option-btn');
-        
-        // Check if clicked element is an option button and not disabled
-        if (button && !button.disabled) {
-            e.preventDefault();
-            e.stopPropagation();
-            
-            const questionId = button.getAttribute('data-question-id');
-            const answer = button.getAttribute('data-answer');
-            const type = button.getAttribute('data-type');
-            
-            if (questionId && answer && type) {
-                await answerQuestion(questionId, answer, type);
-            }
-        }
-    });
-}
-
-// Enhanced Answer Question - No Page Refresh
-async function answerQuestion(questionId, answer, type) {
-    try {
-        showMessage('Submitting answer...', 'info');
-        
-        const response = await fetchWithTimeout(`${API_URL}/quiz/answer`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${authToken}`
-            },
-            body: JSON.stringify({ questionId, answer, type })
-        });
-
-        if (response.ok) {
-            showMessage('Answer submitted successfully!', 'success');
-            
-            if (type === 'daily') {
-                // Reload daily quiz
-                await loadDailyQuiz();
-            } else if (type === 'competitive') {
-                // Reload competitive quiz topic without page refresh
-                if (currentTopicId && currentTopicName) {
-                    await loadTopicQuestions(currentTopicId, currentTopicName);
-                } else {
-                    // Fallback: reload competitive quiz section
-                    await loadCompetitiveQuiz();
-                }
-            }
-        } else {
-            const data = await response.json();
-            showMessage(data.message || 'Failed to submit answer', 'error');
-        }
-    } catch (error) {
-        console.error('Error submitting answer:', error);
-        showMessage('Error submitting answer', 'error');
-    }
-}
-
-window.answerQuestion = answerQuestion;
-
-// Get User Answer
-async function getUserAnswer(type, questionId) {
-    try {
-        const response = await fetchWithTimeout(
-            `${API_URL}/quiz/user-answer?type=${type}&questionId=${questionId}`,
-            { headers: { 'Authorization': `Bearer ${authToken}` }}
-        );
-        
-        const data = await response.json();
-        return response.ok ? data.answer : null;
-    } catch (error) {
-        console.error('Error getting user answer:', error);
-        return null;
-    }
-}
 
 // Enhanced Load Papers
 async function loadPapers() {
@@ -870,7 +932,6 @@ async function loadPapers() {
     }
 }
 
-// Display All Papers
 function displayAllPapers(papers) {
     const container = document.getElementById('allPapersList');
     if (!container) return;
@@ -884,13 +945,11 @@ function displayAllPapers(papers) {
     `).join('');
 }
 
-// Enhanced Search Papers with debouncing
 async function searchPapers(query) {
     const container = document.getElementById('allPapersList');
     if (!container) return;
     
     if (!query.trim()) {
-        // Reload all papers if search is empty
         const response = await fetchWithTimeout(`${API_URL}/papers`, {
             headers: { 'Authorization': `Bearer ${authToken}` }
         });
@@ -920,7 +979,6 @@ async function searchPapers(query) {
     }
 }
 
-// Open Paper
 function openPaper(url) {
     if (url) {
         window.open(url, '_blank', 'noopener,noreferrer');
@@ -929,8 +987,6 @@ function openPaper(url) {
 
 window.openPaper = openPaper;
 
-// Enhanced Load Channels
-// Enhanced Load Channels
 // Enhanced Load Channels
 async function loadChannels() {
     const container = document.getElementById('channelsContainer');
@@ -947,7 +1003,7 @@ async function loadChannels() {
 
         if (response.ok && data.length > 0) {
             container.innerHTML = data.map(channel => {
-                const imageUrl = convertGoogleDriveUrl(channel.photoUrl); // Convert URL
+                const imageUrl = convertGoogleDriveUrl(channel.photoUrl);
                 return `
                     <div class="channel-card">
                         ${imageUrl && imageUrl.trim() !== '' 
@@ -965,7 +1021,6 @@ async function loadChannels() {
                 `;
             }).join('');
             
-            // Add error handlers after DOM is created
             container.querySelectorAll('.card-image[src]').forEach(img => {
                 img.addEventListener('error', function() {
                     console.error('Failed to load image:', this.src);
@@ -982,7 +1037,6 @@ async function loadChannels() {
 }
 
 // Enhanced Load Apps
-// Enhanced Load Apps
 async function loadApps() {
     const container = document.getElementById('appsContainer');
     if (!container) return;
@@ -998,11 +1052,11 @@ async function loadApps() {
 
         if (response.ok && data.length > 0) {
             container.innerHTML = data.map(app => {
-                const imageUrl = convertGoogleDriveUrl(app.photoUrl); // Convert URL
+                const imageUrl = convertGoogleDriveUrl(app.photoUrl);
                 return `
                     <div class="app-card">
                         ${imageUrl && imageUrl.trim() !== '' 
-                            ? `<img src="${app.photoUrl}" alt="${escapeHtml(app.name)}" class="card-image" crossorigin="anonymous">` 
+                            ? `<img src="${imageUrl}" alt="${escapeHtml(app.name)}" class="card-image" crossorigin="anonymous">` 
                             : `<div class="card-image" style="background: linear-gradient(135deg, var(--primary-600), var(--primary-700)); display: flex; align-items: center; justify-content: center; font-size: 4rem;">📱</div>`
                         }
                         <div class="card-content">
@@ -1016,7 +1070,6 @@ async function loadApps() {
                 `;
             }).join('');
             
-            // Add error handlers after DOM is created
             container.querySelectorAll('.card-image[src]').forEach(img => {
                 img.addEventListener('error', function() {
                     console.error('Failed to load image:', this.src);
@@ -1031,248 +1084,8 @@ async function loadApps() {
         container.innerHTML = '<p class="empty-message error">⚠️ Failed to load apps</p>';
     }
 }
-// XSS Protection - Escape HTML
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
 
-// Admin Dashboard
-function openAdminDashboard() {
-    openModal('adminModal');
-    if (typeof loadAdminData === 'function') {
-        loadAdminData();
-    }
-    if (typeof setupAdminListeners === 'function') {
-        setupAdminListeners();
-    }
-}
-// New function to start daily quiz
-window.startDailyQuiz = async function(quizId) {
-    try {
-        const response = await fetchWithTimeout(`${API_URL}/quiz/daily/start`, {
-            headers: { 'Authorization': `Bearer ${authToken}` }
-        });
-        
-        const data = await response.json();
-        
-        if (response.ok) {
-            openQuizWindow(data, 'daily');
-        } else {
-            showMessage('Failed to start quiz', 'error');
-        }
-    } catch (error) {
-        console.error('Error starting daily quiz:', error);
-        showMessage('Error starting quiz', 'error');
-    }
-};
-
-// New function to open quiz in window
-function openQuizWindow(question, type) {
-    // Reset timer
-    quizStartTime = Date.now();
-    
-    const container = type === 'daily' 
-        ? document.getElementById('dailyQuizContainer')
-        : document.getElementById('questionsContainer');
-    
-    if (!container) return;
-    
-    let html = '<div class="quiz-window">';
-    html += '<div class="quiz-timer">⏱️ <span id="quizTimer">0s</span></div>';
-    html += `<div class="quiz-question">
-                <p class="question-text">${escapeHtml(question.question)}</p>
-                <div class="options-container">
-                    <button class="option-btn" data-answer="A">A. ${escapeHtml(question.optionA)}</button>
-                    <button class="option-btn" data-answer="B">B. ${escapeHtml(question.optionB)}</button>
-                    <button class="option-btn" data-answer="C">C. ${escapeHtml(question.optionC)}</button>
-                    <button class="option-btn" data-answer="D">D. ${escapeHtml(question.optionD)}</button>
-                </div>
-            </div>`;
-    html += '</div>';
-    
-    container.innerHTML = html;
-    
-    // Start timer
-    startQuizTimer();
-    
-    // Add click handlers
-    container.querySelectorAll('.option-btn').forEach(btn => {
-        btn.addEventListener('click', async function() {
-            const answer = this.getAttribute('data-answer');
-            const timeSpent = Math.floor((Date.now() - quizStartTime) / 1000);
-            
-            // Stop timer
-            stopQuizTimer();
-            
-            // Disable all buttons
-            container.querySelectorAll('.option-btn').forEach(b => b.disabled = true);
-            
-            // Submit answer
-            await submitQuizAnswer(question._id, answer, type, timeSpent, question.correctOption);
-        });
-    });
-}
-
-// Timer functions
-function startQuizTimer() {
-    stopQuizTimer(); // Clear any existing timer
-    
-    quizTimerInterval = setInterval(() => {
-        const elapsed = Math.floor((Date.now() - quizStartTime) / 1000);
-        const timerEl = document.getElementById('quizTimer');
-        if (timerEl) {
-            timerEl.textContent = formatTime(elapsed);
-        }
-    }, 1000);
-}
-
-function stopQuizTimer() {
-    if (quizTimerInterval) {
-        clearInterval(quizTimerInterval);
-        quizTimerInterval = null;
-    }
-}
-
-function formatTime(seconds) {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
-}
-
-// New submit function with time tracking
-async function submitQuizAnswer(questionId, answer, type, timeSpent, correctOption) {
-    try {
-        showMessage('Submitting answer...', 'info');
-        
-        const response = await fetchWithTimeout(`${API_URL}/quiz/answer`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${authToken}`
-            },
-            body: JSON.stringify({ 
-                questionId, 
-                answer, 
-                type, 
-                timeSpent,
-                correctOption 
-            })
-        });
-
-        const data = await response.json();
-
-        if (response.ok) {
-            const isCorrect = data.isCorrect;
-            showMessage(
-                isCorrect ? '✓ Correct Answer!' : '✗ Wrong Answer!', 
-                isCorrect ? 'success' : 'error'
-            );
-            
-            // Show result with correct answer
-            setTimeout(() => {
-                showQuizResult(questionId, answer, correctOption, type);
-                
-                // Reload analytics
-                loadAnalytics();
-            }, 500);
-        } else {
-            showMessage(data.message || 'Failed to submit answer', 'error');
-        }
-    } catch (error) {
-        console.error('Error submitting answer:', error);
-        showMessage('Error submitting answer', 'error');
-    }
-}
-
-// Show quiz result
-function showQuizResult(questionId, userAnswer, correctAnswer, type) {
-    if (type === 'daily') {
-        // Reload daily quiz to show completed state
-        loadDailyQuiz();
-    } else {
-        // For competitive quiz, show result in modal
-        const container = document.getElementById('questionsContainer');
-        if (!container) return;
-        
-        const isCorrect = userAnswer === correctAnswer;
-        
-        container.innerHTML = `
-            <div class="quiz-result-display ${isCorrect ? 'correct' : 'wrong'}">
-                <div class="result-icon">${isCorrect ? '✓' : '✗'}</div>
-                <h3>${isCorrect ? 'Correct!' : 'Incorrect'}</h3>
-                <p>Your answer: <strong>${userAnswer}</strong></p>
-                <p>Correct answer: <strong>${correctAnswer}</strong></p>
-                <div class="result-actions">
-                    <button class="btn-primary" onclick="backToTopics()">Back to Topics</button>
-                </div>
-            </div>
-        `;
-    }
-}
-
-// Update loadTopicQuestions to use new window approach
-window.loadTopicQuestions = async function(topicId, topicName) {
-    const container = document.getElementById('questionsContainer');
-    const topicsContainer = document.getElementById('topicsContainer');
-    
-    if (!container || !topicsContainer) return;
-    
-    currentTopicId = topicId;
-    currentTopicName = topicName;
-    
-    container.innerHTML = '<div class="skeleton" style="height: 300px; border-radius: 12px;"></div>';
-    topicsContainer.style.display = 'none';
-    container.style.display = 'block';
-    
-    try {
-        const response = await fetchWithTimeout(`${API_URL}/quiz/topic/${topicId}`, {
-            headers: { 'Authorization': `Bearer ${authToken}` }
-        });
-        
-        const data = await response.json();
-
-        if (response.ok && data.questions && data.questions.length > 0) {
-            let html = `<button class="back-to-topics" onclick="backToTopics()">← Back to Topics</button>`;
-            html += `<h4 style="margin-bottom: 20px; color: var(--primary-600); font-size: 1.5rem;">${escapeHtml(topicName)}</h4>`;
-            html += '<div class="competitive-questions-list">';
-            
-            for (let i = 0; i < data.questions.length; i++) {
-                const question = data.questions[i];
-                html += `
-                    <div class="competitive-question-card">
-                        <div class="question-number">Question ${i + 1}</div>
-                        <button class="btn-start-question" onclick='startCompetitiveQuestion(${JSON.stringify(question).replace(/'/g, "&apos;")})'>
-                            Attempt Question
-                        </button>
-                    </div>
-                `;
-            }
-            
-            html += '</div>';
-            container.innerHTML = html;
-        } else {
-            container.innerHTML = `
-                <button class="back-to-topics" onclick="backToTopics()">← Back to Topics</button>
-                <p class="empty-message">No questions available in this topic</p>
-            `;
-        }
-    } catch (error) {
-        console.error('Error loading topic questions:', error);
-        container.innerHTML = `
-            <button class="back-to-topics" onclick="backToTopics()">← Back to Topics</button>
-            <p class="empty-message error">⚠️ Failed to load questions</p>
-        `;
-    }
-};
-
-// Start competitive question
-window.startCompetitiveQuestion = function(question) {
-    openQuizWindow(question, 'competitive');
-};
-
-// New analytics loading function
+// Load Analytics
 async function loadAnalytics() {
     try {
         const response = await fetchWithTimeout(`${API_URL}/quiz/analytics`, {
@@ -1282,7 +1095,6 @@ async function loadAnalytics() {
         const data = await response.json();
         
         if (response.ok) {
-            // Update analytics display
             document.getElementById('totalTime').textContent = formatTime(data.totalTimeConsumed);
             document.getElementById('totalQuestions').textContent = data.totalQuestionsAnswered;
             document.getElementById('accuracy').textContent = `${data.accuracy}%`;
@@ -1292,12 +1104,10 @@ async function loadAnalytics() {
             document.getElementById('correctAnswers').textContent = data.correctAnswers;
             document.getElementById('wrongAnswers').textContent = data.wrongAnswers;
             
-            // Update accuracy progress bar
             const accuracyBar = document.getElementById('accuracyBar');
             if (accuracyBar) {
                 accuracyBar.style.width = `${data.accuracy}%`;
                 
-                // Color based on accuracy
                 if (data.accuracy >= 80) {
                     accuracyBar.style.background = 'var(--success-500)';
                 } else if (data.accuracy >= 60) {
@@ -1312,24 +1122,21 @@ async function loadAnalytics() {
     }
 }
 
-// Update the loadDataWithProgress function to include analytics
-async function loadDataWithProgress() {
-    const sections = [
-        { fn: loadDailyQuiz, name: 'Daily Quiz' },
-        { fn: loadCompetitiveQuiz, name: 'Topics' },
-        { fn: loadPapers, name: 'Papers' },
-        { fn: loadChannels, name: 'Channels' },
-        { fn: loadApps, name: 'Apps' },
-        { fn: loadAnalytics, name: 'Analytics' }
-    ];
-    
-    for (const section of sections) {
-        try {
-            await section.fn();
-        } catch (error) {
-            console.error(`Error loading ${section.name}:`, error);
-            showMessage(`Failed to load ${section.name}`, 'error');
-        }
+// XSS Protection
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Admin Dashboard
+function openAdminDashboard() {
+    openModal('adminModal');
+    if (typeof loadAdminData === 'function') {
+        loadAdminData();
+    }
+    if (typeof setupAdminListeners === 'function') {
+        setupAdminListeners();
     }
 }
 console.log('✨ Zeta App System Initialized');
