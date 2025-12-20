@@ -981,11 +981,15 @@ window.loadTopicQuestions = async function(topicId, topicName) {
     }
 };
 
-function backToTopics() {
+window.backToTopics = function() {
     const topicsContainer = document.getElementById('topicsContainer');
     const questionsContainer = document.getElementById('questionsContainer');
     const searchBar = document.getElementById('topicSearchBar');
     
+    // Stop timer if running
+    stopQuizTimer();
+    
+    // Clear all state
     currentTopicId = null;
     currentTopicName = null;
     currentQuestionIndex = 0;
@@ -993,21 +997,44 @@ function backToTopics() {
     skippedQuestions.clear();
     userAnswers = {};
     
+    // Clear questions container completely
+    if (questionsContainer) {
+        questionsContainer.innerHTML = '';
+        questionsContainer.style.display = 'none';
+    }
+    
+    // Show topics
     if (topicsContainer) topicsContainer.style.display = 'grid';
-    if (questionsContainer) questionsContainer.style.display = 'none';
     if (searchBar) searchBar.style.display = 'block';
-}
+};
 
 window.backToTopics = backToTopics;
 window.showReviewAnswers = async function(topicId, topicName) {
     const container = document.getElementById('questionsContainer');
     
-    // Get all questions with user answers
-    const questionsWithAnswers = topicQuestions.map((q, index) => {
-        const userAnswer = userAnswers[q._id];
-        const isCorrect = userAnswer === q.correctOption;
-        return { ...q, userAnswer, isCorrect, index: index + 1 };
-    });
+    // Get only ATTEMPTED questions with user answers
+    const questionsWithAnswers = topicQuestions
+        .map((q, index) => {
+            const userAnswer = userAnswers[q._id];
+            if (!userAnswer) return null; // Skip unanswered questions
+            const isCorrect = userAnswer === q.correctOption;
+            return { ...q, userAnswer, isCorrect, index: index + 1 };
+        })
+        .filter(q => q !== null); // Remove null entries
+    
+    // Check if any questions were attempted
+    if (questionsWithAnswers.length === 0) {
+        container.innerHTML = `
+            <div class="quiz-window">
+                <button class="back-to-topics" onclick="continueQuiz()">← Back to Questions</button>
+                <div class="empty-message">
+                    <p>📝 No questions attempted yet!</p>
+                    <p style="margin-top: var(--space-4);">Answer some questions first to review them.</p>
+                </div>
+            </div>
+        `;
+        return;
+    }
     
     currentQuestionIndex = 0;
     displayReviewQuestion(questionsWithAnswers);
@@ -1027,6 +1054,7 @@ function displayReviewQuestion(questionsWithAnswers) {
     let html = '<div class="review-container" style="display: block !important; visibility: visible !important;">';
     html += '<div class="review-header">';
     html += `<button class="back-to-topics" onclick="backToTopics()">← Back to Topics</button>`;
+    html += `<button class="btn-secondary" onclick="backToTopics()" style="margin: 0;">🏠 Back to Topics</button>`;
     html += '<h4>Review Your Answers</h4>';
     html += '</div>';
     html += `<div class="review-progress">${currentQuestionIndex + 1} of ${totalQuestions} Questions</div>`;
@@ -1066,7 +1094,7 @@ function displayReviewQuestion(questionsWithAnswers) {
     if (currentQuestionIndex < totalQuestions - 1) {
         html += `<button class="btn-primary" onclick="navigateReview(1)">Next →</button>`;
     } else {
-        html += `<button class="btn-primary" onclick="backToTopics()">Finish Review</button>`;
+        html += `<button class="btn-primary" onclick="exitReview()">Continue Quiz</button>`;
     }
     html += '</div>';
     
@@ -1084,6 +1112,22 @@ function displayReviewQuestion(questionsWithAnswers) {
         console.log('✅ Review question displayed:', current.index);
     }, 10);
 }
+// Exit review and return to questions
+window.exitReview = function() {
+    // Find first unanswered question or stay at current
+    const unansweredIndex = topicQuestions.findIndex(q => !userAnswers[q._id]);
+    if (unansweredIndex !== -1) {
+        currentQuestionIndex = unansweredIndex;
+    }
+    
+    // Display current question
+    displayCurrentCompetitiveQuestion();
+};
+
+// Continue quiz from where user left off
+window.continueQuiz = function() {
+    displayCurrentCompetitiveQuestion();
+};
 
 window.navigateReview = function(direction) {
     const questionsWithAnswers = topicQuestions.map((q, index) => {
