@@ -939,43 +939,33 @@ window.loadTopicQuestions = async function(topicId, topicName) {
         const data = await response.json();
 
         if (response.ok && data.questions && data.questions.length > 0) {
-            topicQuestions = data.questions;
-            
-            // Get user's answers
-            const answersResponse = await fetchWithTimeout(`${API_URL}/quiz/user-answers-bulk`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${authToken}`
-                },
-                body: JSON.stringify({
-                    questionIds: topicQuestions.map(q => q._id),
-                    type: 'competitive'
-                })
-            });
-            
-            const { answers } = await answersResponse.json();
-            userAnswers = answers;
-            
-            // Count answered questions
-            const answeredCount = Object.keys(answers).length;
-            const totalCount = topicQuestions.length;
-            
-            // Check if all questions are answered
-            if (answeredCount === totalCount) {
-                // Show review option
-                showReviewOption(topicId, topicName);
-            } else {
-                // Find first unanswered question
-                currentQuestionIndex = topicQuestions.findIndex(q => !answers[q._id]);
-                if (currentQuestionIndex === -1) {
-                    currentQuestionIndex = 0;
-                }
-                
-                // Start timer and display question
-                quizStartTime = Date.now();
-                displayCurrentCompetitiveQuestion();
-            }
+    topicQuestions = data.questions;
+    
+    // Get user's answers
+    const answersResponse = await fetchWithTimeout(`${API_URL}/quiz/user-answers-bulk`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+        },
+        body: JSON.stringify({
+            questionIds: topicQuestions.map(q => q._id),
+            type: 'competitive'
+        })
+    });
+    
+    const { answers } = await answersResponse.json();
+    userAnswers = answers;
+    
+    // Always start from first unanswered question or first question
+    currentQuestionIndex = topicQuestions.findIndex(q => !answers[q._id]);
+    if (currentQuestionIndex === -1) {
+        currentQuestionIndex = 0;
+    }
+    
+    // Start timer and display question
+    quizStartTime = Date.now();
+    displayCurrentCompetitiveQuestion();
         } else {
             container.innerHTML = `
                 <button class="back-to-topics" onclick="backToTopics()">← Back to Topics</button>
