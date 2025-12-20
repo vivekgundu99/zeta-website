@@ -9,6 +9,9 @@ let currentTopicId = null;
 let currentTopicName = null;
 let currentQuestionIndex = 0;
 let topicQuestions = [];
+let skippedQuestions = new Set();
+let allTopics = [];
+let userAnswers = {};
 
 // Constants
 const DEBOUNCE_DELAY = 300;
@@ -269,6 +272,16 @@ function setupEventListeners() {
     if (paperSearch) {
         paperSearch.addEventListener('input', (e) => {
             debounceSearch(e.target.value);
+        });
+    }
+    // Topic Search with debounce
+    const topicSearch = document.getElementById('topicSearch');
+    if (topicSearch) {
+        topicSearch.addEventListener('input', (e) => {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                searchTopics(e.target.value);
+            }, DEBOUNCE_DELAY);
         });
     }
 }
@@ -746,6 +759,7 @@ function displayCurrentCompetitiveQuestion() {
     html += `<button class="back-to-topics" onclick="confirmBackToTopics()">← Back to Topics</button>`;
     html += '<div class="quiz-timer">⏱️ <span id="quizTimer">0s</span></div>';
     html += '</div>';
+    html += `<button class="skip-question-btn" onclick="skipQuestion()">Skip Question →</button>`;
     html += `<div class="question-progress">Question ${currentQuestionIndex + 1} of ${topicQuestions.length}</div>`;
     html += `<div class="quiz-question">
                 <p class="question-text">${escapeHtml(question.question)}</p>
@@ -765,17 +779,67 @@ function displayCurrentCompetitiveQuestion() {
         startQuizTimer();
     }
     
-    container.querySelectorAll('.option-btn').forEach(btn => {
+container.querySelectorAll('.option-btn').forEach(btn => {
         btn.addEventListener('click', async function() {
             const answer = this.getAttribute('data-answer');
             const timeSpent = Math.floor((Date.now() - quizStartTime) / 1000);
             
             container.querySelectorAll('.option-btn').forEach(b => b.disabled = true);
+            container.querySelector('.skip-question-btn').disabled = true;
+            
+            // Remove from skipped if it was skipped before
+            skippedQuestions.delete(question._id);
             
             await submitQuizAnswer(question._id, answer, 'competitive', timeSpent, question.correctOption);
         });
     });
 }
+
+window.skipQuestion = function() {
+    const question = topicQuestions[currentQuestionIndex];
+    skippedQuestions.add(question._id);
+    
+    showMessage('Question skipped', 'info');
+    
+    // Move to next unanswered question
+    currentQuestionIndex++;
+    
+    // Find next unanswered or skipped question
+    while (currentQuestionIndex < topicQuestions.length) {
+        const nextQuestion = topicQuestions[currentQuestionIndex];
+        if (!userAnswers[nextQuestion._id] || skippedQuestions.has(nextQuestion._id)) {
+            break;
+        }
+        currentQuestionIndex++;
+    }
+    
+    if (currentQuestionIndex < topicQuestions.length) {
+        displayCurrentCompetitiveQuestion();
+    } else {
+        // Check if there are any unanswered questions
+        const hasUnanswered = topicQuestions.some(q => !userAnswers[q._id]);
+        
+        if (hasUnanswered) {
+            // Go back to first unanswered
+            currentQuestionIndex = topicQuestions.findIndex(q => !userAnswers[q._id]);
+            displayCurrentCompetitiveQuestion();
+        } else {
+            // All done
+            stopQuizTimer();
+            const totalTime = Math.floor((Date.now() - quizStartTime) / 1000);
+            const container = document.getElementById('questionsContainer');
+            container.innerHTML = `
+                <div class="quiz-complete">
+                    <div class="complete-icon">🎉</div>
+                    <h3>Topic Completed!</h3>
+                    <p>You've answered all ${topicQuestions.length} questions</p>
+                    <p>Total Time: ${formatTime(totalTime)}</p>
+                    <button class="btn-primary" onclick="backToTopics()">Back to Topics</button>
+                </div>
+            `;
+        }
+    }
+};
 
 // Confirm Back to Topics
 function confirmBackToTopics() {
@@ -800,11 +864,9 @@ async function loadCompetitiveQuiz() {
         const data = await response.json();
 
         if (response.ok && data.length > 0) {
-            container.innerHTML = data.map(topic => `
-                <button class="topic-btn" onclick="loadTopicQuestions('${topic._id}', '${escapeHtml(topic.name)}')" aria-label="Load ${escapeHtml(topic.name)} quiz">
-                    ${escapeHtml(topic.name)}
-                </button>
-            `).join('');
+            // Sort topics alphabetically
+            allTopics = data.sort((a, b) => a.name.localeCompare(b.name));
+            displayTopics(allTopics);
         } else {
             container.innerHTML = '<p class="empty-message">📚 No topics available yet</p>';
         }
@@ -814,19 +876,55 @@ async function loadCompetitiveQuiz() {
     }
 }
 
+function displayTopics(topics) {
+    const container = document.getElementById('topicsContainer');
+    if (!container) return;
+    
+    if (topics.length === 0) {
+        container.innerHTML = '<p class="empty-message">🔍 No topics found</p>';
+        return;
+    }
+    
+    container.innerHTML = topics.map(topic => `
+        <button class="topic-btn" onclick="loadTopicQuestions('${topic._id}', '${escapeHtml(topic.name)}')" aria-label="Load ${escapeHtml(topic.name)} quiz">
+            ${escapeHtml(topic.name)}
+        </button>
+    `).join('');
+}
+
+function searchTopics(query) {
+    const searchQuery = query.toLowerCase().trim();
+    
+    if (!searchQuery) {
+        displayTopics(allTopics);
+        return;
+    }
+    
+    const filteredTopics = allTopics.filter(topic => 
+        topic.name.toLowerCase().includes(searchQuery)
+    );
+    
+    displayTopics(filteredTopics);
+}
+
+window.searchTopics = searchTopics;
+
 // Load Topic Questions
 window.loadTopicQuestions = async function(topicId, topicName) {
     const container = document.getElementById('questionsContainer');
     const topicsContainer = document.getElementById('topicsContainer');
+    const searchBar = document.getElementById('topicSearchBar');
     
     if (!container || !topicsContainer) return;
     
     currentTopicId = topicId;
     currentTopicName = topicName;
     currentQuestionIndex = 0;
+    skippedQuestions.clear();
     
     container.innerHTML = '<div class="skeleton" style="height: 300px; border-radius: 12px;"></div>';
     topicsContainer.style.display = 'none';
+    if (searchBar) searchBar.style.display = 'none';
     container.style.display = 'block';
     
     try {
@@ -839,7 +937,7 @@ window.loadTopicQuestions = async function(topicId, topicName) {
         if (response.ok && data.questions && data.questions.length > 0) {
             topicQuestions = data.questions;
             
-            // Check for user's last attempted question
+            // Get user's answers
             const answersResponse = await fetchWithTimeout(`${API_URL}/quiz/user-answers-bulk`, {
                 method: 'POST',
                 headers: {
@@ -853,16 +951,27 @@ window.loadTopicQuestions = async function(topicId, topicName) {
             });
             
             const { answers } = await answersResponse.json();
+            userAnswers = answers;
             
-            // Find first unanswered question
-            currentQuestionIndex = topicQuestions.findIndex(q => !answers[q._id]);
-            if (currentQuestionIndex === -1) {
-                currentQuestionIndex = 0; // Start from beginning if all answered
+            // Count answered questions
+            const answeredCount = Object.keys(answers).length;
+            const totalCount = topicQuestions.length;
+            
+            // Check if all questions are answered
+            if (answeredCount === totalCount) {
+                // Show review option
+                showReviewOption(topicId, topicName);
+            } else {
+                // Find first unanswered question
+                currentQuestionIndex = topicQuestions.findIndex(q => !answers[q._id]);
+                if (currentQuestionIndex === -1) {
+                    currentQuestionIndex = 0;
+                }
+                
+                // Start timer and display question
+                quizStartTime = Date.now();
+                displayCurrentCompetitiveQuestion();
             }
-            
-            // Start timer
-            quizStartTime = Date.now();
-            displayCurrentCompetitiveQuestion();
         } else {
             container.innerHTML = `
                 <button class="back-to-topics" onclick="backToTopics()">← Back to Topics</button>
@@ -881,18 +990,118 @@ window.loadTopicQuestions = async function(topicId, topicName) {
 function backToTopics() {
     const topicsContainer = document.getElementById('topicsContainer');
     const questionsContainer = document.getElementById('questionsContainer');
+    const searchBar = document.getElementById('topicSearchBar');
     
     currentTopicId = null;
     currentTopicName = null;
     currentQuestionIndex = 0;
     topicQuestions = [];
+    skippedQuestions.clear();
+    userAnswers = {};
     
     if (topicsContainer) topicsContainer.style.display = 'grid';
     if (questionsContainer) questionsContainer.style.display = 'none';
+    if (searchBar) searchBar.style.display = 'block';
 }
 
 window.backToTopics = backToTopics;
 
+function showReviewOption(topicId, topicName) {
+    const container = document.getElementById('questionsContainer');
+    
+    container.innerHTML = `
+        <div class="review-option-screen">
+            <button class="back-to-topics" onclick="backToTopics()">← Back to Topics</button>
+            <div class="review-complete-icon">✅</div>
+            <h3>All Questions Completed!</h3>
+            <p>You've answered all ${topicQuestions.length} questions in this topic.</p>
+            <button class="btn-primary" onclick="showReviewAnswers('${topicId}', '${escapeHtml(topicName)}')">
+                📝 Review Your Answers
+            </button>
+        </div>
+    `;
+}
+
+window.showReviewAnswers = async function(topicId, topicName) {
+    const container = document.getElementById('questionsContainer');
+    
+    // Get all questions with user answers
+    const questionsWithAnswers = topicQuestions.map((q, index) => {
+        const userAnswer = userAnswers[q._id];
+        const isCorrect = userAnswer === q.correctOption;
+        return { ...q, userAnswer, isCorrect, index: index + 1 };
+    });
+    
+    currentQuestionIndex = 0;
+    displayReviewQuestion(questionsWithAnswers);
+};
+
+function displayReviewQuestion(questionsWithAnswers) {
+    const container = document.getElementById('questionsContainer');
+    const current = questionsWithAnswers[currentQuestionIndex];
+    const totalQuestions = questionsWithAnswers.length;
+    
+    let html = '<div class="review-container">';
+    html += '<div class="review-header">';
+    html += `<button class="back-to-topics" onclick="backToTopics()">← Back to Topics</button>`;
+    html += '<h4>Review Your Answers</h4>';
+    html += '</div>';
+    html += `<div class="review-progress">${currentQuestionIndex + 1} of ${totalQuestions} Questions</div>`;
+    
+    html += '<div class="review-question">';
+    html += `<div class="question-number">Question ${current.index}</div>`;
+    html += `<p class="question-text">${escapeHtml(current.question)}</p>`;
+    html += '<div class="review-options-container">';
+    
+    ['A', 'B', 'C', 'D'].forEach(option => {
+        const optionKey = `option${option}`;
+        const isUserAnswer = current.userAnswer === option;
+        const isCorrect = current.correctOption === option;
+        
+        let className = 'review-option';
+        if (isCorrect) {
+            className += ' correct';
+        } else if (isUserAnswer && !isCorrect) {
+            className += ' wrong';
+        }
+        
+        html += `<div class="${className}">
+            ${option}. ${escapeHtml(current[optionKey])}
+            ${isCorrect ? '<span class="option-badge correct-badge">✓ Correct</span>' : ''}
+            ${isUserAnswer && !isCorrect ? '<span class="option-badge wrong-badge">✗ Your Answer</span>' : ''}
+        </div>`;
+    });
+    
+    html += '</div>'; // close options-container
+    html += '</div>'; // close review-question
+    
+    // Navigation buttons
+    html += '<div class="review-navigation">';
+    if (currentQuestionIndex > 0) {
+        html += `<button class="btn-secondary" onclick="navigateReview(-1)">← Previous</button>`;
+    }
+    if (currentQuestionIndex < totalQuestions - 1) {
+        html += `<button class="btn-primary" onclick="navigateReview(1)">Next →</button>`;
+    } else {
+        html += `<button class="btn-primary" onclick="backToTopics()">Finish Review</button>`;
+    }
+    html += '</div>';
+    
+    html += '</div>'; // close review-container
+    
+    container.innerHTML = html;
+}
+
+window.navigateReview = function(direction) {
+    const questionsWithAnswers = topicQuestions.map((q, index) => {
+        const userAnswer = userAnswers[q._id];
+        const isCorrect = userAnswer === q.correctOption;
+        return { ...q, userAnswer, isCorrect, index: index + 1 };
+    });
+    
+    currentQuestionIndex += direction;
+    displayReviewQuestion(questionsWithAnswers);
+};
 // Enhanced Load Papers
 async function loadPapers() {
     const recentContainer = document.getElementById('recentPapers');
