@@ -730,21 +730,22 @@ async function loadNextCompetitiveQuestion(lastCorrectOption) {
     currentQuestionIndex++;
     
     if (currentQuestionIndex < topicQuestions.length) {
-        displayCurrentCompetitiveQuestion();
-    } else {
-        // All questions completed
-        stopQuizTimer();
-        const totalTime = Math.floor((Date.now() - quizStartTime) / 1000);
-        container.innerHTML = `
-            <div class="quiz-complete">
-                <div class="complete-icon">🎉</div>
-                <h3>Topic Completed!</h3>
-                <p>You've answered all ${topicQuestions.length} questions</p>
-                <p>Total Time: ${formatTime(totalTime)}</p>
-                <button class="btn-primary" onclick="backToTopics()">Back to Topics</button>
-            </div>
-        `;
-    }
+    displayCurrentCompetitiveQuestion();
+} else {
+    // All questions completed
+    stopQuizTimer();
+    const totalTime = Math.floor((Date.now() - quizStartTime) / 1000);
+    container.innerHTML = `
+        <div class="quiz-complete">
+            <div class="complete-icon">🎉</div>
+            <h3>Topic Completed!</h3>
+            <p>You've answered all ${topicQuestions.length} questions</p>
+            <p>Total Time: ${formatTime(totalTime)}</p>
+            <button class="btn-primary" onclick="showReviewAnswers('${currentTopicId}', '${escapeHtml(currentTopicName)}')">📝 Review Your Answers</button>
+            <button class="btn-secondary" onclick="backToTopics()" style="margin-top: var(--space-4);">Back to Topics</button>
+        </div>
+    `;
+}
 }
 
 // Display Current Competitive Question
@@ -759,7 +760,10 @@ function displayCurrentCompetitiveQuestion() {
     html += `<button class="back-to-topics" onclick="confirmBackToTopics()">← Back to Topics</button>`;
     html += '<div class="quiz-timer">⏱️ <span id="quizTimer">0s</span></div>';
     html += '</div>';
-    html += `<button class="skip-question-btn" onclick="skipQuestion()">Skip Question →</button>`;
+    html += '<div style="display: flex; gap: var(--space-3); margin-bottom: var(--space-4);">';
+    html += `<button class="skip-question-btn" onclick="skipQuestion()" style="flex: 1;">Skip Question →</button>`;
+    html += `<button class="btn-secondary" onclick="showReviewAnswers('${currentTopicId}', '${escapeHtml(currentTopicName)}')" style="flex: 1; margin: 0;">📝 Review Answers</button>`;
+    html += '</div>';
     html += `<div class="question-progress">Question ${currentQuestionIndex + 1} of ${topicQuestions.length}</div>`;
     html += `<div class="quiz-question">
                 <p class="question-text">${escapeHtml(question.question)}</p>
@@ -958,10 +962,15 @@ window.loadTopicQuestions = async function(topicId, topicName) {
             const totalCount = topicQuestions.length;
             
             // Check if all questions are answered
-            if (answeredCount === totalCount) {
-                // Show review option
-                showReviewOption(topicId, topicName);
-            } else {
+            // Always start from first unanswered question or first question
+            currentQuestionIndex = topicQuestions.findIndex(q => !answers[q._id]);
+            if (currentQuestionIndex === -1) {
+                currentQuestionIndex = 0;
+            }
+
+            // Start timer and display question
+            quizStartTime = Date.now();
+            displayCurrentCompetitiveQuestion();
                 // Find first unanswered question
                 currentQuestionIndex = topicQuestions.findIndex(q => !answers[q._id]);
                 if (currentQuestionIndex === -1) {
@@ -1005,33 +1014,6 @@ function backToTopics() {
 }
 
 window.backToTopics = backToTopics;
-
-function showReviewOption(topicId, topicName) {
-    const container = document.getElementById('questionsContainer');
-    
-    container.innerHTML = `
-        <div class="review-option-screen" style="display: block !important;">
-            <button class="back-to-topics" onclick="backToTopics()">← Back to Topics</button>
-            <div class="review-complete-icon">✅</div>
-            <h3>All Questions Completed!</h3>
-            <p>You've answered all ${topicQuestions.length} questions in this topic.</p>
-            <button class="btn-primary" id="reviewAnswersBtn" >
-                📝 Review Your Answers
-            </button>
-        </div>
-    `;
-    
-    // Add event listener instead of onclick
-    setTimeout(() => {
-        const btn = document.getElementById('reviewAnswersBtn');
-        if (btn) {
-            btn.addEventListener('click', () => {
-                console.log('Review button clicked');
-                showReviewAnswers(topicId, topicName);
-            });
-        }
-    }, 100);
-}
 
 window.showReviewAnswers = async function(topicId, topicName) {
     const container = document.getElementById('questionsContainer');
