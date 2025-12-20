@@ -730,22 +730,22 @@ async function loadNextCompetitiveQuestion(lastCorrectOption) {
     currentQuestionIndex++;
     
     if (currentQuestionIndex < topicQuestions.length) {
-    displayCurrentCompetitiveQuestion();
-} else {
-    // All questions completed
-    stopQuizTimer();
-    const totalTime = Math.floor((Date.now() - quizStartTime) / 1000);
-    container.innerHTML = `
-        <div class="quiz-complete">
-            <div class="complete-icon">🎉</div>
-            <h3>Topic Completed!</h3>
-            <p>You've answered all ${topicQuestions.length} questions</p>
-            <p>Total Time: ${formatTime(totalTime)}</p>
-            <button class="btn-primary" onclick="showReviewAnswers('${currentTopicId}', '${escapeHtml(currentTopicName)}')">📝 Review Your Answers</button>
-            <button class="btn-secondary" onclick="backToTopics()" style="margin-top: var(--space-4);">Back to Topics</button>
-        </div>
-    `;
-}
+        displayCurrentCompetitiveQuestion();
+    } else {
+        // All questions completed
+        stopQuizTimer();
+        const totalTime = Math.floor((Date.now() - quizStartTime) / 1000);
+        container.innerHTML = `
+            <div class="quiz-complete">
+                <div class="complete-icon">🎉</div>
+                <h3>Topic Completed!</h3>
+                <p>You've answered all ${topicQuestions.length} questions</p>
+                <p>Total Time: ${formatTime(totalTime)}</p>
+                <button class="btn-primary" onclick="showReviewAnswers('${currentTopicId}', '${escapeHtml(currentTopicName)}')">📝 Review Your Answers</button>
+                <button class="btn-secondary" onclick="backToTopics()" style="margin-top: var(--space-4);">Back to Topics</button>
+            </div>
+        `;
+    }
 }
 
 // Display Current Competitive Question
@@ -962,15 +962,10 @@ window.loadTopicQuestions = async function(topicId, topicName) {
             const totalCount = topicQuestions.length;
             
             // Check if all questions are answered
-            // Always start from first unanswered question or first question
-            currentQuestionIndex = topicQuestions.findIndex(q => !answers[q._id]);
-            if (currentQuestionIndex === -1) {
-                currentQuestionIndex = 0;
-            }
-
-            // Start timer and display question
-            quizStartTime = Date.now();
-            displayCurrentCompetitiveQuestion();
+            if (answeredCount === totalCount) {
+                // Show review option
+                showReviewOption(topicId, topicName);
+            } else {
                 // Find first unanswered question
                 currentQuestionIndex = topicQuestions.findIndex(q => !answers[q._id]);
                 if (currentQuestionIndex === -1) {
@@ -1014,7 +1009,6 @@ function backToTopics() {
 }
 
 window.backToTopics = backToTopics;
-
 window.showReviewAnswers = async function(topicId, topicName) {
     const container = document.getElementById('questionsContainer');
     
