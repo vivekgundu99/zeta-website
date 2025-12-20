@@ -1270,6 +1270,7 @@ text-align: center;
 color: var(--text-primary);
 }
 .feature-item {
+color: var(--primary-600);
 display: flex;
 gap: var(--space-5);
 margin-bottom: var(--space-6);
