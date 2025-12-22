@@ -270,7 +270,6 @@ body {
 .form-section h2 {
     font-size: 1.875rem;
     font-weight: 700;
-    margin-bottom: var(--space-8);
     color: var(--text-primary);
     text-align: center;
     letter-spacing: -0.01em;
@@ -1253,7 +1252,6 @@ transform: rotate(90deg);
 }
 .modal-content h2 {
 font-size: 2rem;
-margin-bottom: var(--space-8);
 color: var(--text-primary);
 font-weight: 700;
 }
@@ -1264,16 +1262,13 @@ text-align: center;
 .welcome-name {
 font-size: 1.25rem;
 color: var(--primary-600);
-margin-bottom: var(--space-8);
 font-weight: 600;
 }
 .features-list {
 text-align: left;
-margin: var(--space-8) 0;
 }
 .features-list h3 {
 font-size: 1.375rem;
-margin-bottom: var(--space-6);
 text-align: center;
 color: var(--text-primary);
 }
@@ -2817,4 +2812,11 @@ transition-duration: 0.01ms !important;
 .quiz-content,
 .quiz-content > * {
     visibility: visible !important;
+}
+.form-section h4 {
+    font-size: 1.3rem;
+    margin-bottom: var(--space-8);
+    color: var(--text-primary);
+    text-align: center;
+    letter-spacing: -0.01em;
 }
