@@ -13,6 +13,39 @@ let skippedQuestions = new Set();
 let allTopics = [];
 let userAnswers = {};
 
+// Store attempted questions globally
+let attemptedQuestionsCache = [];
+
+window.showReviewAnswers = async function(topicId, topicName) {
+    const container = document.getElementById('questionsContainer');
+    
+    // Get only ATTEMPTED questions with user answers
+    attemptedQuestionsCache = topicQuestions
+        .map((q, index) => {
+            const userAnswer = userAnswers[q._id];
+            if (!userAnswer) return null; // Skip unanswered questions
+            const isCorrect = userAnswer === q.correctOption;
+            return { ...q, userAnswer, isCorrect, index: index + 1 };
+        })
+        .filter(q => q !== null); // Remove null entries
+    
+    // Check if any questions were attempted
+    if (attemptedQuestionsCache.length === 0) {
+        container.innerHTML = `
+            <div class="quiz-window">
+                <button class="back-to-topics" onclick="continueQuiz()">← Back to Questions</button>
+                <div class="empty-message">
+                    <p>📝 No questions attempted yet!</p>
+                    <p style="margin-top: var(--space-4);">Answer some questions first to review them.</p>
+                </div>
+            </div>
+        `;
+        return;
+    }
+    
+    currentQuestionIndex = 0;
+    displayReviewQuestion(attemptedQuestionsCache);
+};
 // Constants
 const DEBOUNCE_DELAY = 300;
 const MESSAGE_DURATION = 3000;
@@ -741,7 +774,7 @@ async function loadNextCompetitiveQuestion(lastCorrectOption) {
                 <h3>Topic Completed!</h3>
                 <p>You've answered all ${topicQuestions.length} questions</p>
                 <p>Total Time: ${formatTime(totalTime)}</p>
-                <button class="btn-primary" onclick="showReviewAnswers('${currentTopicId}', '${escapeHtml(currentTopicName)}')">📝 Review Your Answers</button>
+                <button class="btn-primary" onclick="showReviewAnswers('${currentTopicId}', '${escapeHtml(currentTopicName)}')">📝 Attempted Questions</button>
                 <button class="btn-secondary" onclick="backToTopics()" style="margin-top: var(--space-4);">Back to Topics</button>
             </div>
         `;
@@ -762,7 +795,7 @@ function displayCurrentCompetitiveQuestion() {
     html += '</div>';
     html += '<div style="display: flex; gap: var(--space-3); margin-bottom: var(--space-4);">';
     html += `<button class="skip-question-btn" onclick="skipQuestion()" style="flex: 1;">Skip Question →</button>`;
-    html += `<button class="btn-secondary" onclick="showReviewAnswers('${currentTopicId}', '${escapeHtml(currentTopicName)}')" style="flex: 1; margin: 0;">📝 Review Answers</button>`;
+    html += `<button class="btn-secondary" onclick="showReviewAnswers('${currentTopicId}', '${escapeHtml(currentTopicName)}')" style="flex: 1; margin: 0;">📝 Attempted Questions</button>`;
     html += '</div>';
     html += `<div class="question-progress">Question ${currentQuestionIndex + 1} of ${topicQuestions.length}</div>`;
     html += `<div class="quiz-question">
@@ -1009,11 +1042,12 @@ window.backToTopics = function() {
 };
 
 window.backToTopics = backToTopics;
+
 window.showReviewAnswers = async function(topicId, topicName) {
     const container = document.getElementById('questionsContainer');
     
     // Get only ATTEMPTED questions with user answers
-    const questionsWithAnswers = topicQuestions
+    attemptedQuestionsCache = topicQuestions
         .map((q, index) => {
             const userAnswer = userAnswers[q._id];
             if (!userAnswer) return null; // Skip unanswered questions
@@ -1023,7 +1057,7 @@ window.showReviewAnswers = async function(topicId, topicName) {
         .filter(q => q !== null); // Remove null entries
     
     // Check if any questions were attempted
-    if (questionsWithAnswers.length === 0) {
+    if (attemptedQuestionsCache.length === 0) {
         container.innerHTML = `
             <div class="quiz-window">
                 <button class="back-to-topics" onclick="continueQuiz()">← Back to Questions</button>
@@ -1037,7 +1071,7 @@ window.showReviewAnswers = async function(topicId, topicName) {
     }
     
     currentQuestionIndex = 0;
-    displayReviewQuestion(questionsWithAnswers);
+    displayReviewQuestion(attemptedQuestionsCache);
 };
 
 function displayReviewQuestion(questionsWithAnswers) {
@@ -1054,10 +1088,9 @@ function displayReviewQuestion(questionsWithAnswers) {
     let html = '<div class="review-container" style="display: block !important; visibility: visible !important;">';
     html += '<div class="review-header">';
     html += `<button class="back-to-topics" onclick="backToTopics()">← Back to Topics</button>`;
-    html += `<button class="btn-secondary" onclick="backToTopics()" style="margin: 0;">🏠 Back to Topics</button>`;
-    html += '<h4>Review Your Answers</h4>';
+    html += '<h4>Attempted Questions</h4>';
     html += '</div>';
-    html += `<div class="review-progress">${currentQuestionIndex + 1} of ${totalQuestions} Questions</div>`;
+    html += `<div class="review-progress">${currentQuestionIndex + 1} of ${totalQuestions} Attempted Questions</div>`;
     
     html += '<div class="review-question">';
     html += `<div class="question-number">Question ${current.index}</div>`;
@@ -1130,14 +1163,8 @@ window.continueQuiz = function() {
 };
 
 window.navigateReview = function(direction) {
-    const questionsWithAnswers = topicQuestions.map((q, index) => {
-        const userAnswer = userAnswers[q._id];
-        const isCorrect = userAnswer === q.correctOption;
-        return { ...q, userAnswer, isCorrect, index: index + 1 };
-    });
-    
     currentQuestionIndex += direction;
-    displayReviewQuestion(questionsWithAnswers);
+    displayReviewQuestion(attemptedQuestionsCache);
 };
 // Enhanced Load Papers
 async function loadPapers() {
